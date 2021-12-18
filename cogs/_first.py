@@ -11,22 +11,22 @@ class First(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("on_ready")
+        self.bot.print("on_ready")
         for s in os.listdir("cogs/"):
             if s.endswith(".py") and not s.startswith("_"):
                 try:
                     self.bot.load_extension(f"cogs.{s[:-3]}")
-                    print(f"loaded cogs.{s[:-3]}")
+                    self.bot.print(f"loaded cogs.{s[:-3]}")
                 except:
                     traceback.print_exc()
-        print("all cogs loaded.")
+        self.bot.print("all cogs loaded.")
         self.save.start()
-        print("started save loop.")
+        self.bot.print("started save loop.")
 
     @tasks.loop(seconds=60)
     async def save(self):
         self.bot.db.commit()
-        print("saved the data.")
+        self.bot.print("saved the data.")
 
 
 def setup(bot):

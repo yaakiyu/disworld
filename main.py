@@ -31,6 +31,7 @@ bot.db: utils.EasyDB = utils.EasyDB("disworld.db")
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):
     print("[Disworld System Log]", *args, **kwargs)
+bot.print = prrint
 
 # loading first cog
 bot.load_extension("cogs._first")
