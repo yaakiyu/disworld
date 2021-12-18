@@ -1,2 +1,3 @@
 # disworld
-A discord bot which can be played game.
+discordでゲームができるbot。
+ストーリー重視の新感覚RPGをお楽しみください。

@@ -26,7 +26,8 @@ class First(commands.Cog):
     @tasks.loop(seconds=60)
     async def save(self):
         self.bot.db.commit()
-        self.bot.print("saved the data.")
+        if self.bot.command_prefix == "g2.":
+            self.bot.print("saved the data.")
 
 
 def setup(bot):
