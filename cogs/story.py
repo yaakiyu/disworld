@@ -34,6 +34,8 @@ class Story(commands.Cog):
 ```""")
 
         elif label == 2:
+            if self.bot.db.users.search(id=ctx.author.id)[0][2] == 2:
+                self.bot.db.users.update_item(f"id={ctx.author.id}", story=3)
             e = discord.Embed(title="Ep.2", description="""
 (story)
 ```diff

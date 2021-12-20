@@ -6,12 +6,7 @@ import discord
 class First(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.version = "0.1"
         self.bot.db.create_table("users", id="integer", name="str", story="integer", level="integer", exp="integer", ch="none")
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.bot.print("on_ready")
         for s in os.listdir("cogs/"):
             if s.endswith(".py") and not s.startswith("_"):
                 try:
@@ -20,6 +15,10 @@ class First(commands.Cog):
                 except:
                     traceback.print_exc()
         self.bot.print("all cogs loaded.")
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        self.bot.print("on_ready")
         self.save.start()
         self.bot.print("started save loop.")
 

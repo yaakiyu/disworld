@@ -10,7 +10,17 @@ class Help(commands.Cog):
         if not ctx.author.id in self.bot.owner_ids:
             # 公開前限定：オーナー専用ロック
             return await ctx.send("I wont help you!!")
-        if command is None:pass
+        if command is None:
+            e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
+            if not self.bot.db.users.is_in(id=ctx.author.id):
+                e.append(name="story", value="最初は必ずこのコマンドを使ってください。")
+            elif user:=self.bot.db.users.search(id=ctx.author.id)[0][2] == 0:
+                e.append(name="story", value="最初は必ずこのコマンドを使ってください。")
+            else:
+                e.append(name="story", value="ストーリーを見ることができます。")
+            if user >= 1:
+                e.append(name="talk", value="ゲーム内のキャラと会話することができます")
+            await ctx.send(embed=e)
 
     @slash_commands.command(
         description="このbotのヘルプ",
