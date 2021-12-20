@@ -27,7 +27,7 @@ s = {
 # bot object
 bot = commands.Bot(**s)
 bot.load_extension("jishaku")
-bot.db: utils.EasyDB = utils.EasyDB("disworld.db")
+bot.db = utils.EasyDB("disworld.db")
 bot.version = "0.1"
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):
