@@ -13,14 +13,18 @@ class Help(commands.Cog):
         if command is None:
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
             if not self.bot.db.users.is_in(id=ctx.author.id):
-                e.append(name="story", value="最初は必ずこのコマンドを使ってください。")
-            elif user:=self.bot.db.users.search(id=ctx.author.id)[0][2] == 0:
-                e.append(name="story", value="最初は必ずこのコマンドを使ってください。")
+                e.add_field(name="story", value="最初は必ずこのコマンドを使ってください。")
+            elif (user:=self.bot.db.users.search(id=ctx.author.id)[0][2]) == 0:
+                e.add_field(name="story", value="最初は必ずこのコマンドを使ってください。")
             else:
-                e.append(name="story", value="ストーリーを見ることができます。")
+                e.add_field(name="story", value="ストーリーを見ることができます。")
             if user >= 1:
-                e.append(name="talk", value="ゲーム内のキャラと会話することができます")
+                e.add_field(name="talk", value="ゲーム内のキャラと会話することができます")
             await ctx.send(embed=e)
+        else:
+            e = discord.Embed(title=f"help - {command}", description="** **")
+            if command == "story":
+                e.add_field(name="説明", value="このコマンドではbotのストーリーを見ることができます。このコマンドを使って、ミッションをクリアしていくことで、")
 
     @slash_commands.command(
         description="このbotのヘルプ",

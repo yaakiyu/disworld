@@ -7,6 +7,14 @@ class Talk(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def _data_convert(self, data, ctx):
+        for m in ["author.name", "author.name", "channel.id", "channel.name"]:
+            replacedata = ctx
+            for s in m.split("."):
+                replacedata = getattr(replacedata, s)
+            data = data.replace("{ctx."+m+"}", str(replacedata))
+        return data
+
     async def _talk(self, ctx):
         if not ctx.author.id in self.bot.owner_ids:
             return await ctx.send("未完成...")
@@ -20,22 +28,12 @@ class Talk(commands.Cog):
         menu = utils.EasyMenu("話し相手", "選択してください", **opt)
         msg = await ctx.send(embed=e, components=[menu])
         inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
+
         if label:=int(inter.select_menu.selected_options[0].value) == 1:
+            talk = self.bot.talkdata["1"]["ja"]
             if self.bot.db.users.search(id=ctx.author.id)[0][2] == 1:
                 self.bot.db.users.update_item(f"id={ctx.author.id}", story=2)
-            e = discord.Embed(title="老人に話しかけた。",description=f"""
-こんにちは。こんな時に初めて見る人なんか珍しいね。
-名前?僕はただのなんてこともない老人だよ。
-君の名前は?{ctx.author.name}さんか。よろしく。
-ところでここはどこか分かる?え?わからないって?
-君は実に面白いなー。ここはセーフイ村だよ。
-地上は危ないわけだから、みんなここで暮らしてるわけだよ。
-えっ?出たい?(なんでここを出たい人はみんな僕に言うんだろう...)
-本当に出たいなら一つすることがある。
-あそこの店に行って、武器を買ってきて。それができれば出してあげるよ。
-```diff
-! ミッションクリア !
-```""")
+            e = discord.Embed(title="老人に話しかけた。",description=self._data_convert(talk, ctx))
         await msg.edit(embed=e,components=[])
 
     @slash_commands.command(description="指定した人と会話する。")

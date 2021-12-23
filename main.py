@@ -5,6 +5,7 @@ import logging
 import utils
 import dislash
 import keep_alive
+import data
 # mode(0=normal,1=test)
 mode = 1
 # logging
@@ -28,11 +29,17 @@ s = {
 bot = commands.Bot(**s)
 bot.load_extension("jishaku")
 bot.db = utils.EasyDB("disworld.db")
-bot.version = "0.1"
+
+#data set
+bot.version = data.version
+bot.storydata = data.storydata
+bot.talkdata = data.talkdata
+
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):
     print("[SystemLog]", *args, **kwargs)
 bot.print = prrint
+del prrint, data
 
 # loading first cog
 bot.load_extension("cogs._first")
