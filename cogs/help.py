@@ -9,7 +9,7 @@ class Help(commands.Cog):
     async def _help(self, ctx, command):
         if not ctx.author.id in self.bot.owner_ids:
             # 公開前限定：オーナー専用ロック
-            return await ctx.send("I wont help you!!")
+            return await ctx.send("I want to help you!!")
         if command is None:
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
             if not self.bot.db.users.is_in(id=ctx.author.id):
@@ -36,6 +36,24 @@ class Help(commands.Cog):
     @commands.command(name="help")
     async def c_help(self, ctx, command=None):
         await self._help(ctx, command)
+    
+    async def _info(self, ctx):
+        if not ctx.author.id in self.bot.owner_ids:
+            # 公開前限定：オーナー専用ロック
+            return await ctx.send("I won't introduce you!!")
+        e = discord.Embed(title="このbotの情報", description=" ")
+        e.add_field(name="導入サーバー数", value=f"{len(self.bot.guilds)} servers")
+        e.add_field(name="ユーザー数", value=f"{len(self.bot.users)} users")
+        e.add_field(name="チャンネル数", value=f"{len(list(self.bot.get_all_channels()))} channels")
+        await ctx.send(embed=e)
+
+    @slash_commands.command(description="このbotの情報")
+    async def info(self, inter):
+        await self._info(inter)
+    
+    @commands.command("info")
+    async def c_info(self, ctx):
+        await self._info(ctx)
 
 def setup(bot):
     bot.add_cog(Help(bot))

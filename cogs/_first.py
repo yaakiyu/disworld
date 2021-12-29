@@ -1,12 +1,13 @@
 from discord.ext import commands, tasks
 import traceback
 import os
-import discord
+import utils
 
 class First(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.bot.db.create_table("users", id="integer", name="str", story="integer", level="integer", exp="integer", ch="none")
+        self.bot.db.create_table("item", user="integer", data="str")
         for s in os.listdir("cogs/"):
             if s.endswith(".py") and not s.startswith("_"):
                 try:
