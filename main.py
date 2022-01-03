@@ -7,7 +7,7 @@ import dislash
 import keep_alive
 import data
 # mode(0=normal,1=test)
-mode = 1
+mode = 0
 # logging
 logging.basicConfig(level=logging.INFO)
 

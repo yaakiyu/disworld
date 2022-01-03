@@ -8,9 +8,8 @@ class Shop(commands.Cog):
         self.bot = bot
 
     async def _shop(self, ctx):
-        if not ctx.author.id in self.bot.owner_ids:
-            # 公開前限定：オーナー専用ロック
-            return await ctx.reply("ショップでお買い物できるものはなかった。")
+        if self.bot.version == "0.1":
+            return await ctx.send("現在コマンド絶賛開発中...")
         if not self.bot.db.users.is_in(id=ctx.author.id):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 3:

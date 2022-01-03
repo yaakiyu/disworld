@@ -16,8 +16,6 @@ class Talk(commands.Cog):
         return data
 
     async def _talk(self, ctx):
-        if not ctx.author.id in self.bot.owner_ids:
-            return await ctx.send("未完成...")
         if not self.bot.db.users.is_in(id=ctx.author.id):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         if udata:=self.bot.db.users.search(id=ctx.author.id)[0][2] < 1:

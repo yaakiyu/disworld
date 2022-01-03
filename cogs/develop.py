@@ -18,7 +18,7 @@ class Develop(commands.Cog):
             self.bot.db.do(content)
         else:
             await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
-    
+
     @slash_commands.command(
         guild_ids=dev_guilds,
         description="管理者専用ヘルプコマンド",

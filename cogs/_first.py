@@ -1,7 +1,6 @@
 from discord.ext import commands, tasks
 import traceback
 import os
-import utils
 
 class First(commands.Cog):
     def __init__(self, bot):
@@ -21,13 +20,13 @@ class First(commands.Cog):
     async def on_ready(self):
         self.bot.print("on_ready")
         self.save.start()
-        self.bot.print("started save loop.")
+        self.bot.print("started saving loop.")
 
     @tasks.loop(seconds=60)
     async def save(self):
         self.bot.db.commit()
         if self.bot.command_prefix == "g2.":
-            self.bot.print("saved the data.")
+            self.bot.print("saved data.")
 
 
 def setup(bot):

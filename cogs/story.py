@@ -8,9 +8,6 @@ class Story(commands.Cog):
         self.bot = bot
 
     async def _story(self, ctx):
-        if not ctx.author.id in self.bot.owner_ids:
-            # 公開前限定：オーナー専用ロック
-            return await ctx.reply("今はない。")
         if not self.bot.db.users.is_in(id=ctx.author.id):
             self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
         userdata = self.bot.db.users.search(id=ctx.author.id)[0][2]
@@ -26,16 +23,14 @@ class Story(commands.Cog):
         menu = utils.EasyMenu("story", "選択してください", **opt)
         msg = await ctx.send(embed=e, components=[menu])
         inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
+        label=int(inter.select_menu.selected_options[0].value)
+        storydata = self.bot.storydata["1"][str(label)]["ja"]
 
-        if (label:=int(inter.select_menu.selected_options[0].value)) == 1:
-            storydata = self.bot.storydata["1"]["1"]["ja"]
-            if userdata == 0:
-                self.bot.db.users.update_item(f"id={ctx.author.id}", story=1)
+        if label == 1 and userdata == 0:
+            self.bot.db.users.update_item(f"id={ctx.author.id}", story=1)
 
-        elif label == 2:
-            storydata = self.bot.storydata["1"]["2"]["ja"]
-            if userdata == 2:
-                self.bot.db.users.update_item(f"id={ctx.author.id}", story=3)
+        elif label == 2 and userdata == 2:
+            self.bot.db.users.update_item(f"id={ctx.author.id}", story=3)
         e = discord.Embed(title=f"Ep.{label}", description=storydata)
         await msg.edit(embed=e, components=[])
 
