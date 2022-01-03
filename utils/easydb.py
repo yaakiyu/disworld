@@ -22,7 +22,7 @@ class EasyDB():
     def get_table(self, name:str):
         """テーブルを検索し、Tableオブジェクトを返す。"""
         if not hasattr(self, name):
-            raise TableNotFound("テーブルが見つかりません")
+            raise TableNotFound("テーブルが見つかりませんでした。")
         return getattr(self, name)
 
     def get_all_tables(self):
@@ -77,10 +77,6 @@ class Table():
             elif isinstance(m, int):
                 return_data.append(str(m))
         return ", ".join(return_data)
-
-    def get_values_info(self) -> dict:
-        """create_tableのときに指定したデータの確認ができる。"""
-        return self.values
 
     def add_item(self, *values, commit=False) -> None:
         """アイテムの追加。

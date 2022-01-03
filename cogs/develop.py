@@ -37,7 +37,7 @@ class Develop(commands.Cog):
         else:
             e = discord.Embed(title="コマンドが見つかりませんでした。")
         await inter.reply(embed=e)
-    
+
     @slash_commands.command(
         guild_ids=dev_guilds,
         description="管理者専用データを検索",
@@ -53,7 +53,10 @@ class Develop(commands.Cog):
     async def checkdata(self,inter,table_name,cid):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
-        await inter.reply(self.bot.db.get_table(table_name)[int(cid)])
+        data = self.bot.db.get_table(table_name)[int(cid)]
+        if len(data) == 0:
+            return await inter.reply("No data found.")
+        await inter.reply(dict(zip(self.bot.db.get_table(table_name).values, data[0])))
 
 
 def setup(bot):
