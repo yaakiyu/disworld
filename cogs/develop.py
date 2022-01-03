@@ -47,13 +47,13 @@ class Develop(commands.Cog):
                 dislash.OptionChoice("users", 1),
                 dislash.OptionChoice("items", 2)
             ]),
-            Option("id", "検索したいID", dislash.OptionType.INTEGER, required=True)
+            Option("cid", "検索したいID", dislash.OptionType.INTEGER, required=True)
         ]
     )
-    async def checkdata(self,inter,table,cid):
+    async def checkdata(self,inter,table_name,cid):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
-        await inter.reply(self.bot.db.get_table(table)[cid])
+        await inter.reply(self.bot.db.get_table(table_name)[cid])
 
 
 def setup(bot):
