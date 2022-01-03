@@ -19,6 +19,12 @@ class EasyDB():
         if not getattr(self, table_name, False):
             setattr(self, table_name, Table(table_name, self.conn, self.cur))
 
+    def get_table(self, name:str):
+        """テーブルを検索し、Tableオブジェクトを返す。"""
+        if not hasattr(self, name):
+            raise TableNotFound("テーブルが見つかりません")
+        return getattr(self, name)
+
     def get_all_tables(self):
         """EasyDB.(テーブル名)は作成されず、List[Table]が返る。"""
         self.cur.execute("select name from SQLITE_MASTER where type='table' ORDER BY name")
@@ -36,7 +42,7 @@ class EasyDB():
             self.cur.execute(c)
             if c.startswith("SELECT"):returns += f"\n{self.cur.fetchall()}"
         return returns
-    
+
     def commit(self) -> None:
         """データを実際に保存する。
         Table.add_itemなどでcommit=Trueを指定するのと同じ動き。"""
@@ -56,6 +62,11 @@ class Table():
         self.values = {a.split()[0]:a.split()[1] for a in sql.split(", ")}
         if not name in EasyDB.get_all_tables_name(self):
             raise TableNotFound("テーブルが見つかりませんでした。")
+
+    def __get__(self, value):
+        if "id" not in list(self.values.keys()):
+            raise ValueError("テーブルにidカラムが存在しません。")
+        return self.search(id=value)
 
     def _execute_data_create(*values) -> str:
         """(管理用)渡された引数がstr型だったら「'」をつけて返す。"""
@@ -96,7 +107,7 @@ class Table():
 
     def search(self, get=None, sort=None, mode="and", **where) -> tuple:
         """情報の検索。
-        get: どのをゲットするか。
+        get: どの値をゲットするか。
         sort: どの値の順番に並べるか。
         mode: 条件式が2つ以上のとき、andかorか。
         **where: (キーワード引数)サーチする条件。

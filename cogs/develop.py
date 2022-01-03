@@ -1,8 +1,9 @@
 from discord.ext import commands
 import discord
+import dislash
 from dislash import slash_commands, Option
 
-dev_guilds = [794079140462460979, 914391660786503690]
+dev_guilds = [794079140462460979, 914391660786503690, 903866784887762995]
 
 class Develop(commands.Cog):
     def __init__(self, bot):
@@ -15,7 +16,7 @@ class Develop(commands.Cog):
     )
     async def db(self, inter, content):
         if inter.author.id in self.bot.owner_ids:
-            self.bot.db.do(content)
+            await inter.reply("結果:" + self.bot.db.do(content))
         else:
             await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
 
@@ -25,14 +26,33 @@ class Develop(commands.Cog):
         options=[Option("command", "詳しいヘルプを見たいコマンド名", required=False)]
     )
     async def admin_help(self, inter, command=None):
+        if not inter.author.id in self.bot.owner_ids:
+            return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
         if command is None:
             e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。")
         elif command == "db":
-            e = discord.Embed(title="dbコマンドの詳細", description="データベースを操作します。\n基本的な操作は下に示します。")
-            e.add_field(name="テーブルの追加", value="")
+            e = discord.Embed(title="dbコマンドの詳細", description="SQL構文でデータベースを操作します。")
+        elif command == "checkdata":
+            e = discord.Embed(title="checkdataコマンドの詳細", description="`checkdata [テーブル名] [ID]`で検索できます。idカラムが存在しないテーブルは対応していません。")
         else:
             e = discord.Embed(title="コマンドが見つかりませんでした。")
         await inter.reply(embed=e)
+    
+    @slash_commands.command(
+        guild_ids=dev_guilds,
+        description="管理者専用データを検索",
+        options=[
+            Option("テーブル名", "データを検索したいテーブルを選択", choices=[
+                dislash.OptionChoice("users", 1),
+                dislash.OptionChoice("items", 2)
+            ]),
+            Option("ID", "検索したいID", dislash.OptionType.INTEGER)
+        ]
+    )
+    async def checkdata(self,inter,table,cid):
+        if not inter.author.id in self.bot.owner_ids:
+            return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
+        await inter.reply(self.bot.db.get_table(table)[cid])
 
 
 def setup(bot):
