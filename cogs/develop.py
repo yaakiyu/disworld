@@ -42,11 +42,11 @@ class Develop(commands.Cog):
         guild_ids=dev_guilds,
         description="管理者専用データを検索",
         options=[
-            Option("テーブル名", "データを検索したいテーブルを選択", choices=[
+            Option("table_name", "データを検索したいテーブルを選択", choices=[
                 dislash.OptionChoice("users", 1),
                 dislash.OptionChoice("items", 2)
             ]),
-            Option("ID", "検索したいID", dislash.OptionType.INTEGER)
+            Option("id", "検索したいID", dislash.OptionType.INTEGER)
         ]
     )
     async def checkdata(self,inter,table,cid):
