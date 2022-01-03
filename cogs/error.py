@@ -9,7 +9,7 @@ class Error(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, e):
-        await ctx.send("error!\n```py\n" + traceback.format_exception(type(e), e, e.__traceback__)+ "\n```")
+        await ctx.send("error!\n```py\n" + "\n".join(traceback.format_exception(type(e), e, e.__traceback__))+ "\n```")
     
     @commands.Cog.listener()
     async def on_ready(self):

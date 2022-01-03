@@ -63,10 +63,10 @@ class Table():
         if not name in EasyDB.get_all_tables_name(self):
             raise TableNotFound("テーブルが見つかりませんでした。")
 
-    def __get__(self, value):
+    def __getitem__(self, item):
         if "id" not in list(self.values.keys()):
             raise ValueError("テーブルにidカラムが存在しません。")
-        return self.search(id=value)
+        return self.search(id=item)
 
     def _execute_data_create(*values) -> str:
         """(管理用)渡された引数がstr型だったら「'」をつけて返す。"""
