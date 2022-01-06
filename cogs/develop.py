@@ -29,7 +29,7 @@ class Develop(commands.Cog):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
         if command is None:
-            e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。")
+            e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。\ncheckdataコマンド：データベースからIDで検索します。")
         elif command == "db":
             e = discord.Embed(title="dbコマンドの詳細", description="SQL構文でデータベースを操作します。")
         elif command == "checkdata":
@@ -53,10 +53,10 @@ class Develop(commands.Cog):
     async def checkdata(self,inter,table_name,cid):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
-        data = self.bot.db.get_table(table_name)[int(cid)]
-        if len(data) == 0:
+        data = self.bot.db.get_table(table_name)
+        if len(data[int(cid)]) == 0:
             return await inter.reply("No data found.")
-        await inter.reply(dict(zip(self.bot.db.get_table(table_name).values, data[0])))
+        await inter.reply(dict(zip(data.values, data[int(cid)][0])))
 
 
 def setup(bot):

@@ -34,6 +34,7 @@ bot.db = utils.EasyDB("disworld.db")
 bot.version = data.version
 bot.storydata = data.storydata
 bot.talkdata = data.talkdata
+bot.commandsdata = data.commandsdata
 
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):

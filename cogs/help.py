@@ -8,21 +8,31 @@ class Help(commands.Cog):
 
     async def _help(self, ctx, command):
         if command is None:
-            user = self.bot.db.users.search(id=ctx.author.id)[0][2]
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
             if not self.bot.db.users.is_in(id=ctx.author.id):
-                e.add_field(name="story", value="最初は必ずこのコマンドを使ってください。")
-            elif user == 0:
-                e.add_field(name="story", value="最初は必ずこのコマンドを使ってください。")
-            else:
-                e.add_field(name="story", value="ストーリーを見ることができます。")
-            if user >= 1:
-                e.add_field(name="talk", value="ゲーム内のキャラと会話することができます")
-            await ctx.send(embed=e)
+                self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
+            user = self.bot.db.users.search(id=ctx.author.id)[0][2]
+            for name, values in self.bot.commandsdata.items():
+                if values["type"] == "default":
+                    e.add_field(name=name, value=values["short"])
+                elif values["type"] == "story":
+                    if values["require"] < user:
+                        e.add_field(name=name, value=values["short"])
+                elif values["type"] == "story_special":
+                    if values["short"](user):
+                        e.add_field(name=name, value=values["short"](user))
         else:
             e = discord.Embed(title=f"help - {command}", description="** **")
-            if command == "story":
-                e.add_field(name="説明", value="このコマンドではbotのストーリーを見ることができます。このコマンドを使って、ミッションをクリアしていくことで、")
+            for name, values in self.bot.commandsdata.items():
+                if values["type"] == "default":
+                    e.add_field(name=name, value=values["description"])
+                elif values["type"] == "story":
+                    if values["require"] < user:
+                        e.add_field(name=name, value=values["description"])
+                elif values["type"] == "story_special":
+                    if values["short"](user):
+                        e.add_field(name=name, value=values["description"](user))
+        await ctx.reply(embed=e)
 
     @slash_commands.command(
         description="このbotのヘルプ",
