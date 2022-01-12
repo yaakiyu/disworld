@@ -7,31 +7,38 @@ class Help(commands.Cog):
         self.bot = bot
 
     async def _help(self, ctx, command):
+        if not self.bot.db.users.is_in(id=ctx.author.id):
+            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
+        user = self.bot.db.users.search(id=ctx.author.id)[0][2]
         if command is None:
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
-            if not self.bot.db.users.is_in(id=ctx.author.id):
-                self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
-            user = self.bot.db.users.search(id=ctx.author.id)[0][2]
             for name, values in self.bot.commandsdata.items():
                 if values["type"] == "default":
-                    e.add_field(name=name, value=values["short"])
+                    e.add_field(name=name, value=values["short"], inline=False)
                 elif values["type"] == "story":
-                    if values["require"] < user:
-                        e.add_field(name=name, value=values["short"])
+                    if values["require"] <= user:
+                        e.add_field(name=name, value=values["short"], inline=False)
                 elif values["type"] == "story_special":
                     if values["short"](user):
-                        e.add_field(name=name, value=values["short"](user))
+                        e.add_field(name=name, value=values["short"](user), inline=False)
         else:
             e = discord.Embed(title=f"help - {command}", description="** **")
-            for name, values in self.bot.commandsdata.items():
+            if command in self.bot.commandsdata.keys():
+                values = self.bot.commandsdata[command]
                 if values["type"] == "default":
-                    e.add_field(name=name, value=values["description"])
+                    e.add_field(name="説明", value=values["description"])
                 elif values["type"] == "story":
-                    if values["require"] < user:
-                        e.add_field(name=name, value=values["description"])
+                    if values["require"] <= user:
+                        e.add_field(name="説明", value=values["description"])
+                    else:
+                        e.add_field(name="説明", value="**__このコマンドの使用条件を満たしていません。__**")
                 elif values["type"] == "story_special":
-                    if values["short"](user):
-                        e.add_field(name=name, value=values["description"](user))
+                    if values["description"](user):
+                        e.add_field(name="説明", value=values["description"](user))
+                    else:
+                        e.add_field(name="説明", value="**__このコマンドの使用条件を満たしていません。__**")
+            else:
+                e.add_field(name="説明", value="コマンドが見つかりませんでした。")
         await ctx.reply(embed=e)
 
     @slash_commands.command(

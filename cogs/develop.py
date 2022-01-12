@@ -16,7 +16,7 @@ class Develop(commands.Cog):
     )
     async def db(self, inter, content):
         if inter.author.id in self.bot.owner_ids:
-            await inter.reply("結果:" + self.bot.db.do(content))
+            await inter.reply("結果:" + self.bot.db.do(content), ephemeral=True)
         else:
             await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
 
@@ -29,14 +29,14 @@ class Develop(commands.Cog):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
         if command is None:
-            e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。\ncheckdataコマンド：データベースからIDで検索します。")
+            e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。\ncheckdataコマンド：データベースからIDで検索します。\nreload_dataコマンド：コマンドやストーリーなどのデータを再読込みします。")
         elif command == "db":
             e = discord.Embed(title="dbコマンドの詳細", description="SQL構文でデータベースを操作します。")
         elif command == "checkdata":
             e = discord.Embed(title="checkdataコマンドの詳細", description="`checkdata [テーブル名] [ID]`で検索できます。idカラムが存在しないテーブルは対応していません。")
         else:
             e = discord.Embed(title="コマンドが見つかりませんでした。")
-        await inter.reply(embed=e)
+        await inter.reply(embed=e, ephemeral=True)
 
     @slash_commands.command(
         guild_ids=dev_guilds,
@@ -56,7 +56,7 @@ class Develop(commands.Cog):
         data = self.bot.db.get_table(table_name)
         if len(data[int(cid)]) == 0:
             return await inter.reply("No data found.")
-        await inter.reply(dict(zip(data.values, data[int(cid)][0])))
+        await inter.reply(dict(zip(data.values, data[int(cid)][0])), ephemeral=True)
 
 
 def setup(bot):

@@ -16,7 +16,8 @@
   
 ## commands_dataについて  
 help用データ。コマンドにはそれぞれtypeが存在する。  
-さらに、short(短い説明)とdescription(詳細helpで出す長い説明)キーは必ず必要。
+さらに、short(短い説明)とdescription(詳細helpで出す長い説明)キーは必ず必要。  
+(以下、typeに関する説明)
 - default デフォルトで表示するコマンド。
 - story ストーリー進行に合わせて表示されるコマンド。require(値はストーリーナンバー)キーが必要。
 - story_special ストーリー進行によって表示内容が変わるコマンド。shortやdescriptionにストーリー進行度を引数にとる関数を渡す。

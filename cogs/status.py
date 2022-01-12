@@ -7,7 +7,8 @@ class Status(commands.Cog):
         self.bot = bot
 
     async def _status(self, ctx):
-        await ctx.reply("ステータスなんて存在しない。")
+        if self.bot.version in ["0.1", "0.2"]:
+            await ctx.reply("ステータスなんて存在しない。")
 
     @slash_commands.command(description="あなたのステータスを見ることができます")
     async def status(self, inter):

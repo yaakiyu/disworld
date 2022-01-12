@@ -108,7 +108,7 @@ class Table():
         mode: 条件式が2つ以上のとき、andかorか。
         **where: (キーワード引数)サーチする条件。
         """
-        values = self.get_values_info().keys()
+        values = self.values.keys()
         if not mode in ["and", "or"]:
             raise TypeError("modeはandかorのみです。")
         if not all((f in values) for f in where.keys()):
