@@ -9,12 +9,10 @@ class Shop(commands.Cog):
         self.bot = bot
 
     async def _shop(self, ctx):
-        if self.bot.version == "0.1":
-            return await ctx.send("現在コマンド絶賛開発中...")
         if not self.bot.db.users.is_in(id=ctx.author.id):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 3:
-            return await ctx.send("あなたはこのコマンドを使う条件を満たしていないようです...")
+            return await ctx.send(embed=utils.RequireFault())
         if udata == 3:
             # チュートリアル
             e = discord.Embed(title="ショップ - チュートリアル", description="お店へようこそ！案内人のマスダです！\nこの街には1個のお店が存在するようですね...\nセーフィ生活店というところに行ってみましょう！")
@@ -30,9 +28,10 @@ class Shop(commands.Cog):
                 self.bot.db.item.add_item(data)
             e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
             await msg.edit(embed=e, components=[])
-            return self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
+            self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
         else:
-            return await ctx.send("現在絶賛開発中...")
+            if self.bot.version == "0.2":
+                return await ctx.send("現在絶賛開発中...")
 
 
     @slash_commands.command(description="お買い物をします。")

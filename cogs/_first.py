@@ -7,14 +7,16 @@ class First(commands.Cog):
         self.bot = bot
         self.bot.db.create_table("users", id="integer", name="str", story="integer", level="integer", exp="integer", ch="none")
         self.bot.db.create_table("item", user="integer", data="str")
+        count = 0
         for s in os.listdir("cogs/"):
-            if s.endswith(".py") and not s.startswith("_"):
+            if not s.startswith("_"):
                 try:
-                    self.bot.load_extension(f"cogs.{s[:-3]}")
-                    self.bot.print(f"loaded cogs.{s[:-3]}")
+                    self.bot.load_extension(f"cogs.{s[:-3] if s.endswith('.py') else s}")
+                    self.bot.print(f"loaded cogs.{s[:-3] if s.endswith('.py' ) else s}")
                 except:
+                    count += 1
                     traceback.print_exc()
-        self.bot.print("all cogs loaded.")
+        self.bot.print(f"all cogs {'successfully ' if not count else ''}loaded{f' and {count} cogs gave an error' if count else ''}.")
 
     @commands.Cog.listener()
     async def on_ready(self):

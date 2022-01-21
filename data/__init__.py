@@ -1,4 +1,4 @@
-version = "0.1"
+version = "0.2"
 
 from .story import storydata
 from .talk import talkdata

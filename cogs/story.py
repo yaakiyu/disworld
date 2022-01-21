@@ -11,26 +11,25 @@ class Story(commands.Cog):
         if not self.bot.db.users.is_in(id=ctx.author.id):
             self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
         userdata = self.bot.db.users.search(id=ctx.author.id)[0][2]
-        if self.bot.version == "0.1":
-            opt = {"エピソード1「始まらなかった話」":"1"}
-        elif self.bot.version == "0.2":
-            if userdata < 2:
-                opt = {"エピソード1「始まらなかった話」":"1"}
-            else:
-                opt = {"エピソード1「始まらなかった話」":"1", "エピソード2「初めてのおつかい」":"2"}
+        opt = {"エピソード1「始まらなかった話」":"1"}
+        if userdata >= 2:
+            opt["エピソード2「初めてのおつかい」"] = "2"
+        if userdata >= 4 and self.bot.version == "0.3":
+            opt["エピソード3「」"] = "3"
 
         e=discord.Embed(title="エピソード - 選択", description="見たいエピソードを選んでください。")
         menu = utils.EasyMenu("story", "選択してください", **opt)
         msg = await ctx.send(embed=e, components=[menu])
         inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
-        label=int(inter.select_menu.selected_options[0].value)
+        label = int(inter.select_menu.selected_options[0].value)
         storydata = self.bot.storydata["1"][str(label)]["ja"]
 
         if label == 1 and userdata == 0:
             self.bot.db.users.update_item(f"id={ctx.author.id}", story=1)
-
         elif label == 2 and userdata == 2:
             self.bot.db.users.update_item(f"id={ctx.author.id}", story=3)
+        elif label == 3 and userdata == 4:
+            self.bot.db.users.update_item(f"id={ctx.author.id}", story=5)
         e = discord.Embed(title=f"Ep.{label}", description=storydata)
         await msg.edit(embed=e, components=[])
 
