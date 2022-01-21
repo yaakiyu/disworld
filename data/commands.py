@@ -11,6 +11,11 @@ commandsdata = {
         "short": "このコマンド",
         "description": "このbotで使えるコマンドについて表示します。\n`help [コマンド名]`と実行することでコマンドの詳細を表示できます。"
     },
+    "info":{
+        "type": "default",
+        "short": "botの情報を表示",
+        "description": "ゲームをプレイしてくれてる人などの情報を表示できます。\nゲーム本編とは関係ありません。"
+    },
     "story": {
         "type": "story_special",
         "short": story_desc,

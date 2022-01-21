@@ -5,8 +5,6 @@ import os
 class First(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.bot.db.create_table("users", id="integer", name="str", story="integer", level="integer", exp="integer", ch="none")
-        self.bot.db.create_table("item", user="integer", data="str")
         count = 0
         for s in os.listdir("cogs/"):
             if not s.startswith("_"):

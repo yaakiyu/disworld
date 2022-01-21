@@ -11,7 +11,7 @@ class Talk(commands.Cog):
         if not self.bot.db.users.is_in(id=ctx.author.id):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 1:
-            return await ctx.send(embed=utils.RequireFault())
+            return utils.RequireFault(ctx)
         e = discord.Embed(title="talk - 選択", description="誰と話すか決めてください。")
         if udata <= 2:
             opt = {"老人":"1"}

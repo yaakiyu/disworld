@@ -12,7 +12,7 @@ class Shop(commands.Cog):
         if not self.bot.db.users.is_in(id=ctx.author.id):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 3:
-            return await ctx.send(embed=utils.RequireFault())
+            return utils.RequireFault(ctx)
         if udata == 3:  # チュートリアル
             e = discord.Embed(title="ショップ - チュートリアル", description="お店へようこそ！案内人のマスダです！\nこの街には1個のお店が存在するようですね...\nセーフィ生活店というところに行ってみましょう！")
             menu = utils.EasyMenu("お店を選択", "お店を選択してください", **{"セーフイ生活店":"1"})

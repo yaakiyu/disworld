@@ -7,12 +7,9 @@ class Status(commands.Cog):
         self.bot = bot
 
     async def _status(self, ctx):
-        if self.bot.version in ["0.1", "0.2"]:
-            # バージョンロック
-            await ctx.reply("ステータスなんて存在しない。")
         udata = self.bot.db.users[ctx.author.id][0][2]
         if udata < 5:
-            return await ctx.send(embed=utils.RequireFault())
+            return await utils.RequireFault(ctx)
         if udata == 5:
             pass
 

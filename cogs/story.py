@@ -15,7 +15,9 @@ class Story(commands.Cog):
         if userdata >= 2:
             opt["エピソード2「初めてのおつかい」"] = "2"
         if userdata >= 4 and self.bot.version == "0.3":
-            opt["エピソード3「」"] = "3"
+            opt["エピソード3「いざ、対決！」"] = "3"
+        if userdata >= 7 and self.bot.version == "0.4":
+            opt["エピソード4「」"] = "4"
 
         e=discord.Embed(title="エピソード - 選択", description="見たいエピソードを選んでください。")
         menu = utils.EasyMenu("story", "選択してください", **opt)
@@ -30,6 +32,8 @@ class Story(commands.Cog):
             self.bot.db.users.update_item(f"id={ctx.author.id}", story=3)
         elif label == 3 and userdata == 4:
             self.bot.db.users.update_item(f"id={ctx.author.id}", story=5)
+        elif label == 4 and userdata == 7:
+            self.bot.db.users.update_item(f"id={ctx.author.id}", story=8)
         e = discord.Embed(title=f"Ep.{label}", description=storydata)
         await msg.edit(embed=e, components=[])
 
