@@ -13,8 +13,7 @@ class Shop(commands.Cog):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 3:
             return await ctx.send(embed=utils.RequireFault())
-        if udata == 3:
-            # チュートリアル
+        if udata == 3:  # チュートリアル
             e = discord.Embed(title="ショップ - チュートリアル", description="お店へようこそ！案内人のマスダです！\nこの街には1個のお店が存在するようですね...\nセーフィ生活店というところに行ってみましょう！")
             menu = utils.EasyMenu("お店を選択", "お店を選択してください", **{"セーフイ生活店":"1"})
             msg = await ctx.send(embed=e, components=[menu])
@@ -25,7 +24,7 @@ class Shop(commands.Cog):
             inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
             if not self.bot.db.item.is_in(id=ctx.author.id):
                 data = json.dumps({"1":1})
-                self.bot.db.item.add_item(data)
+                self.bot.db.item.add_item(ctx.author.id, data)
             e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
             await msg.edit(embed=e, components=[])
             self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
