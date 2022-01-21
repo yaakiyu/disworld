@@ -1,5 +1,5 @@
-itemdata = {
-    "0": {
+itemdata = [
+   {
         "name": "ただの棒",
         "type": "weapon",
         "description": "なんの変哲もない棒。木の匂いがする。",
@@ -7,4 +7,4 @@ itemdata = {
         "attack": 1,
         "specials": []
     }
-}
+]

@@ -30,7 +30,9 @@ class Shop(commands.Cog):
             self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
         else:
             if self.bot.version == "0.2":
+                # バージョンロック
                 return await ctx.send("現在絶賛開発中...")
+            
 
 
     @slash_commands.command(description="お買い物をします。")
