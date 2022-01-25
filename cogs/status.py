@@ -8,9 +8,9 @@ class Status(commands.Cog):
 
     async def _status(self, ctx):
         udata = self.bot.db.users[ctx.author.id][0][2]
-        if udata < 5:
+        if udata < 6:
             return await utils.RequireFault(ctx)
-        if udata == 5:
+        if udata == 6:
             pass
 
     @slash_commands.command(description="あなたのステータスを見ることができます")

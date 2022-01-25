@@ -31,6 +31,6 @@ commandsdata = {
         "type": "story",
         "require": 3,
         "short": "お買い物します。",
-        "description": "ショップでお買い物できます。"
+        "description": "ショップでお買い物できます。\nストーリーを進めると買えるものが増えるかも。"
     }
 }

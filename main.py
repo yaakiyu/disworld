@@ -35,6 +35,7 @@ bot.version = data.version
 bot.storydata = data.storydata
 bot.talkdata = data.talkdata
 bot.commandsdata = data.commandsdata
+bot.fielddata = data.fielddata
 
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):

@@ -32,7 +32,8 @@ class Shop(commands.Cog):
             if self.bot.version == "0.2":
                 # バージョンロック
                 return await ctx.send("現在絶賛開発中...")
-            
+            for i in self.bot.itemdata:
+                pass
 
 
     @slash_commands.command(description="お買い物をします。")
