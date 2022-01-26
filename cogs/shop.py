@@ -51,7 +51,22 @@ class Shop(commands.Cog):
             )
             inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
             selected = shops[int(inter.select_menu.selected_options[0].value)]
-            selling_items = self.bot.itemdata[selected["items"]]
+            selling_items = [self.bot.itemdata[l] for l in selected["items"]]
+            embed = discord.Embed(title=selected["name"], description="買いたいアイテムを選択してください。")
+            for ite in selling_items:
+                if ite["type"] == "weapon":
+                    e.add_field(
+                        name=ite["name"],
+                        value=f"種類：武器 攻撃力：{ite['attack']} 価格：{ite['money']}")
+                elif ite["type"] == "armour":
+                    e.add_field(
+                        name=ite["name"],
+                        value=f"種類：防具 防御力：{ite['block']} 価格：{ite['money']}")
+                elif ite["type"] == "useful":
+                    e.add_field(
+                        name=ite["name"],
+                        value=f"種類：便利アイテム 効果：{ite['effect']} 価格：{ite['money']}")
+            menu = {m["name"]:n for n, m in enumerate(selling_items)}
 
     @slash_commands.command(description="お買い物をします。")
     async def shop(self, inter):

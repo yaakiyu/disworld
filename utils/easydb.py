@@ -3,14 +3,14 @@ from typing import List, Optional
 
 class EasyDB():
     """簡単にデータベース(sqlite3)を扱えるクラス。"""
-    def __init__(self, path:str):
+    def __init__(self, path: str):
         self.conn = sqlite3.connect(path)
         self.cur = self.conn.cursor()
         self.cur.execute("select name from SQLITE_MASTER where type='table' ORDER BY name")
         for f in self.cur.fetchall():
             setattr(self, f[0], Table(f[0], self.conn, self.cur))
 
-    def create_table(self, table_name, **values) -> None:
+    def create_table(self, table_name: str, **values) -> None:
         """「EasyDB.(テーブル名)」(Tableオブジェクト)が作成される。
         table_name:テーブル名
         **values:(キーワード引数)中身 {value:type}"""
@@ -19,13 +19,19 @@ class EasyDB():
         if not getattr(self, table_name, False):
             setattr(self, table_name, Table(table_name, self.conn, self.cur))
 
-    def get_table(self, name:str):
+    def delete_table(self, table_name: str) -> None:
+        """テーブルの削除を行う。"""
+        if not hasattr(self, table_name):
+            raise TableNotFound("テーブルが見つかりませんでした。")
+        self.cur.execute(f"DROP TABLE {table_name}")
+    
+    def get_table(self, name: str):
         """テーブルを検索し、Tableオブジェクトを返す。"""
         if not hasattr(self, name):
             raise TableNotFound("テーブルが見つかりませんでした。")
         return getattr(self, name)
 
-    def get_all_tables(self):
+    def get_all_tables(self) -> list:
         """EasyDB.(テーブル名)は作成されず、List[Table]が返る。"""
         self.cur.execute("select name from SQLITE_MASTER where type='table' ORDER BY name")
         return [Table(f[0], self.conn, self.cur) for f in self.cur.fetchall()]
@@ -35,12 +41,13 @@ class EasyDB():
         self.cur.execute("select name from SQLITE_MASTER where type='table' ORDER BY name")
         return [f[0] for f in self.cur.fetchall()]
 
-    def do(self, *commands, commit:Optional[bool]=True) -> Optional[List[str]]:
+    def do(self, *commands, commit: Optional[bool]=True) -> Optional[List[str]]:
         """sql構文をそのまま実行する。"""
         returns = ""
         for c in commands:
             self.cur.execute(c)
-            if c.startswith("SELECT"):returns += f"\n{self.cur.fetchall()}"
+            if c.startswith("SELECT"):
+                returns += f"\n{self.cur.fetchall()}"
         return returns
 
     def commit(self) -> None:

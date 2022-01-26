@@ -3,6 +3,14 @@ from .easydb import EasyDB
 from .easymenu import EasyMenu
 from .error import ErrorEmbed, RequireFault
 
+__all__ = [
+    "EasyDB",
+    "EasyMenu",
+    "ErrorEmbed",
+    "RequireFault",
+    "data_converter"
+]
+
 def data_converter(data:str, ctx:discord.ext.commands.Context) -> str:
     """dataをctxの情報をもとに変換します。
     変換できるもの

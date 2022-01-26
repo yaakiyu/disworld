@@ -6,7 +6,7 @@ import utils
 import dislash
 import keep_alive
 import data
-# mode(0=normal,1=test)
+# mode(0=normal, 1=test, 2=DB_special)
 mode = 0
 # logging
 logging.basicConfig(level=logging.INFO)
@@ -44,8 +44,10 @@ bot.print = prrint
 del prrint, data
 
 # loading first cog
-bot.load_extension("cogs._first")
-
+if mode != 2:
+    bot.load_extension("cogs._first")
+else:
+    pass
 # run
 keep_alive.keep_alive()
 if mode == 0: bot.run(os.getenv("TOKEN"))
