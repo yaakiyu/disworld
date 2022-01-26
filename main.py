@@ -8,8 +8,6 @@ import keep_alive
 import data
 # mode(0=normal, 1=test, 2=DB_special)
 mode = 0
-# logging
-logging.basicConfig(level=logging.INFO)
 
 # bot settings
 s = {
@@ -47,8 +45,9 @@ del prrint, data
 if mode != 2:
     bot.load_extension("cogs._first")
 else:
-    pass
+    bot.load_extension("cogs._special")
+
 # run
 keep_alive.keep_alive()
 if mode == 0: bot.run(os.getenv("TOKEN"))
-elif mode == 1: bot.run(os.getenv("TOKEN2"))
+elif mode in [1, 2]: bot.run(os.getenv("TOKEN2"))

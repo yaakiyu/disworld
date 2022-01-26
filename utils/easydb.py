@@ -24,6 +24,7 @@ class EasyDB():
         if not hasattr(self, table_name):
             raise TableNotFound("テーブルが見つかりませんでした。")
         self.cur.execute(f"DROP TABLE {table_name}")
+        delattr(self, table_name)
     
     def get_table(self, name: str):
         """テーブルを検索し、Tableオブジェクトを返す。"""
@@ -89,8 +90,8 @@ class Table():
         """アイテムの追加。
         values:create時に指定した順番に従って値を入力。
         commit:(キーワード専用)コミットするかどうか。"""
-        if len(values) != len(self.get_values_info().keys()):
-            raise KeyError(f"引数の数がテーブルの中身と一致していません。\nテーブルの中身：{self.get_values_info()}")
+        if len(values) != len(self.values.keys()):
+            raise KeyError(f"引数の数がテーブルの中身と一致していません。\nテーブルの中身：{self.values}")
         execute_data = self._execute_data_create(*values)
         # print(execute_data)
         self.cur.execute(f"INSERT INTO {self.name} values({execute_data})")

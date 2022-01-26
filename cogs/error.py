@@ -43,10 +43,6 @@ class Error(commands.Cog):
             traceback.print_exception(type(e), e, e.__traceback__)
             await ctx.send(embed=discord.Embed(title="エラーが発生しました", description="\n```py\n" + "".join(traceback.format_exception(type(e), e, e.__traceback__))+ "\n```開発者に報告してください。"))
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.command_log.start()
-
 
 def setup(bot):
     bot.add_cog(Error(bot))
