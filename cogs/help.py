@@ -8,7 +8,7 @@ class Help(commands.Cog):
 
     async def _help(self, ctx, command):
         if not self.bot.db.users.is_in(id=ctx.author.id):
-            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, 0)
+            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
         user = self.bot.db.users.search(id=ctx.author.id)[0][2]
         if command is None:
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
