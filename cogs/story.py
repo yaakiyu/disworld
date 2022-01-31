@@ -9,7 +9,7 @@ class Story(commands.Cog):
 
     async def _story(self, ctx):
         if not self.bot.db.users.is_in(id=ctx.author.id):
-            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, "")
+            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, 0, 0)
         userdata = self.bot.db.users.search(id=ctx.author.id)[0][2]
         opt = {"エピソード1「始まらなかった話」":"1"}
         if userdata >= 2:

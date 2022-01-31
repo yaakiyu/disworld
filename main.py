@@ -1,7 +1,6 @@
 import discord
 import os
 from discord.ext import commands
-import logging
 import utils
 import dislash
 import keep_alive

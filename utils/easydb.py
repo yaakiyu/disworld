@@ -60,16 +60,16 @@ class TableNotFound(Exception):
     pass
 
 class Table():
-    def __init__(self, name, conn, cursor):
+    def __init__(self, name, conn, cur):
         self.conn = conn
-        self.cur = cursor
+        self.cur = cur
         self.name = name
-        self.cur.execute("select sql from SQLITE_MASTER where type='table' and name=?", [self.name])
+        if not name in EasyDB.get_all_tables_name(self):
+            raise TableNotFound("テーブルが見つかりませんでした。")
+        self.cur.execute("select sql from SQLITE_MASTER where type='table' and name=?", (self.name,))
         sql = self.cur.fetchall()[0][0]
         sql = sql.split(f"{self.name}(")[1].replace(")", "")
         self.values = {a.split()[0]:a.split()[1] for a in sql.split(", ")}
-        if not name in EasyDB.get_all_tables_name(self):
-            raise TableNotFound("テーブルが見つかりませんでした。")
 
     def __getitem__(self, item):
         if "id" not in list(self.values.keys()):
@@ -146,7 +146,7 @@ class Table():
         """データがテーブル内に存在するかどうかを調べる。
         存在する個数を返す。
         **kwargs: データに関する情報。"""
-        if not all(m in self.values for m in kwargs.keys()):
+        if not all(m in self.values.keys() for m in kwargs.keys()):
             raise ValueError("存在しないキーがあります。")
         return len(self.search(**kwargs))
 

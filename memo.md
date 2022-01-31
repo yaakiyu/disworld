@@ -23,5 +23,5 @@ help用データ。コマンドにはそれぞれtypeが存在する。　
 - story_special ストーリー進行によって表示内容が変わるコマンド。shortやdescriptionにストーリー進行度を引数にとる関数を渡す。
 
 ## DBの仕様について
-users: id=int, name=str, story=int, level=int, exp=int, ch=Any
+users: id=int, name=str, story=int, level=int, exp=int, place=int, money=int
 item: user=int, data=str

@@ -23,12 +23,12 @@ class Shop(commands.Cog):
             menu = utils.EasyMenu("アイテムを選択", "アイテムを選択してください", **{"ただの棒":"1"})
             await msg.edit(embed=e, components=[menu])
             inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
-            if not self.bot.db.item.is_in(id=ctx.author.id):
+            if not self.bot.db.item.is_in(user=ctx.author.id):
                 data = json.dumps({"1":1})
                 self.bot.db.item.add_item(ctx.author.id, data)
             e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
             await msg.edit(embed=e, components=[])
-            self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
+            self.bot.db.users.update_item(f"user={ctx.author.id}", story=4)
 
         else:
             if self.bot.version == "0.2":
@@ -67,6 +67,10 @@ class Shop(commands.Cog):
                         name=ite["name"],
                         value=f"種類：便利アイテム 効果：{ite['effect']} 価格：{ite['money']}")
             menu = {m["name"]:n for n, m in enumerate(selling_items)}
+            await msg.edit(embed=embed, components=[menu])
+            inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
+            selected = selling_items[int(inter.select_menu.selected_options[0].value)]
+            itemid = self.bot.itemdata.index(selected)
 
     @slash_commands.command(description="お買い物をします。")
     async def shop(self, inter):

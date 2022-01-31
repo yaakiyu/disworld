@@ -45,7 +45,7 @@ class Develop(commands.Cog):
             Option("table_name", "データを検索したいテーブルを選択", required=True, 
             choices=[
                 dislash.OptionChoice("users", "users"),
-                dislash.OptionChoice("items", "items")
+                dislash.OptionChoice("item", "item")
             ]),
             Option("cid", "検索したいID", required=True)
         ]

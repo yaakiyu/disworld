@@ -25,8 +25,8 @@ class Error(commands.Cog):
             await ctx.send(embed=utils.ErrorEmbed("エラー","あなたの権限が足りません。"))
         elif isinstance(e, commands.BotMissingPermissions):
             await ctx.send(embed=utils.ErrorEmbed("エラー","Botに権限が足りません。"))
-        elif isinstance(e, commands.DisableCommand):
-            await ctx.send(embed=utils.ErrorEmbed("エラー","このコマンドは無効化されています。"))
+#         elif isinstance(e, commands.DisableCommand):
+#            await ctx.send(embed=utils.ErrorEmbed("エラー","このコマンドは無効化されています。"))
         elif isinstance(e, commands.CommandOnCooldown):
             await ctx.send(embed=utils.ErrorEmbed("エラー",f"このコマンドはクールダウン中です！\n{round(e.retry_after)}秒後に試してください！"))
         elif isinstance(e, commands.ChannelNotReadable):
