@@ -138,12 +138,12 @@ class Table():
             whered = " WHERE " + f" {mode} ".join([f"{k}={self._execute_data_create(v)}" for k,v in where.items()])
         if get is None:
             get = "*"
-        elif not get in values:
+        elif get not in values:
             raise KeyError("引数の中におかしいものが含まれています")
         if sort is None:
             sort = ""
         elif not sort in values:
-            raise KeyError("ソート順に指定されたカラムは存在しません。")
+            raise KeyError("sortに指定されたカラムが存在しません。")
         else:
             sort = f" ORDER BY {sort}"
         self.cur.execute(f"SELECT {get} FROM {self.name}{whered}{sort}")
@@ -185,8 +185,11 @@ class Table():
         if commit:
             self.conn.commit()
 
-    def add_column(self, name:str, typ:str, default=None, *, commit:bool=False):
-        self.cur.execute(f"ALTER TABLE {self.name} ADD {name} {typ}")
+    def add_column(self, name:str, typ:str, default=None, *, first=False, after=None, commit:bool=False):
+        assert first == False or after is None, "firstとafterの両方があってはいけません。"
+        after = "" if after is None else " AFTER "+after
+        first = " FIRST" if first else ""
+        self.cur.execute(f"ALTER TABLE {self.name} ADD {name} {typ}{first}{after}")
         if default is not None:
             return self.update_item(commit=commit, **{name:default})
         if typ in ["str", "string", "text"]:
