@@ -56,11 +56,17 @@ class EasyDB():
         Table.add_itemなどでcommit=Trueを指定するのと同じ動き。"""
         self.conn.commit()
 
+
 class TableNotFound(Exception):
     pass
 
+
+class UnknownType(Exception):
+    pass
+
+
 class Table():
-    def __init__(self, name, conn, cur):
+    def __init__(self, name:str, conn, cur):
         self.conn = conn
         self.cur = cur
         self.name = name
@@ -99,6 +105,11 @@ class Table():
             self.conn.commit()
 
     def remove_item(self, *where, mode="and", commit=False) -> None:
+        """アイテムの削除。
+        where:strで一つ一つの式を書く。('id>10 and id<100'のようにするとmodeがorでもandできる。)
+        mode:(キーワード専用・defaultはand)orかandを使ってそれぞれの式をどう繋げるかを書く。
+        commit:(キーワード専用)コミットするかどうか。
+        """
         if not mode in ["and", "or"]:
             raise TypeError("modeはandかorのみです。")
         if len(where) == 0:
@@ -108,7 +119,7 @@ class Table():
         self.cur.execute(f"DELETE FROM {self.name}{value}")
         if commit:
             self.conn.commit()
-
+    
     def search(self, get=None, sort=None, mode="and", **where) -> tuple:
         """情報の検索。
         get: どの値をゲットするか。
@@ -132,7 +143,7 @@ class Table():
         if sort is None:
             sort = ""
         elif not sort in values:
-            raise KeyError("引数の中におかしいものが含まれています")
+            raise KeyError("ソート順に指定されたカラムは存在しません。")
         else:
             sort = f" ORDER BY {sort}"
         self.cur.execute(f"SELECT {get} FROM {self.name}{whered}{sort}")
@@ -173,3 +184,16 @@ class Table():
         self.cur.execute(f"UPDATE {self.name} SET {after}{value}")
         if commit:
             self.conn.commit()
+
+    def add_column(self, name:str, typ:str, default=None, *, commit:bool=False):
+        self.cur.execute(f"ALTER TABLE {self.name} ADD {name} {typ}")
+        if default is not None:
+            return self.update_item(commit=commit, **{name:default})
+        if typ in ["str", "string", "text"]:
+            return self.update_item(commit=commit, **{name:""})
+        elif typ in ["int", "integer"]:
+            return self.update_item(commit=commit, **{name:0})
+        else:
+            if commit:
+                self.conn.commit()
+            raise UnknownType("コラム追加には成功したがデフォルトの自動選出に失敗しました。")
