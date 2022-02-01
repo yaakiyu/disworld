@@ -28,12 +28,12 @@ class Shop(commands.Cog):
                 self.bot.db.item.add_item(ctx.author.id, data)
             e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
             await msg.edit(embed=e, components=[])
-            self.bot.db.users.update_item(f"user={ctx.author.id}", story=4)
+            self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
 
         else:
             if self.bot.version == "0.2":
                 # バージョンロック
-                return await ctx.send("現在絶賛開発中...")
+                return await ctx.send("開店準備中...")
             udata = self.bot.db.users[ctx.author.id][0]
             uitem = self.bot.db.item[ctx.author.id][0]
             places = [p for p in self.bot.placedata if p["visit"] < udata[2]]
