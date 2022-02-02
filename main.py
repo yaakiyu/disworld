@@ -20,7 +20,8 @@ s = {
         573836903091273729 #きのたこさん
     ],
     "allowed_mentions": discord.AllowedMentions(users=False, roles=False),
-    "help_command": None
+    "help_command": None,
+    "activity":discord.Game("help: `g.help`")
 }
 # bot object
 bot = commands.Bot(**s)
