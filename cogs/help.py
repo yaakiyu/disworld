@@ -53,7 +53,7 @@ class Help(commands.Cog):
         await self._help(ctx, command)
 
     async def _info(self, ctx):
-        e = discord.Embed(title="このbotの情報", description=f"bot version:{self.bot.version}")
+        e = discord.Embed(title="このbotの情報", description=f"bot version:{self.bot.version}", color=0x00ff00)
         e.add_field(name="導入サーバー数", value=f"{len(self.bot.guilds)} servers")
         e.add_field(name="ユーザー数", value=f"{len(self.bot.users)} users")
         e.add_field(name="チャンネル数", value=f"{len(list(self.bot.get_all_channels()))} channels")

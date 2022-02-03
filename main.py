@@ -21,7 +21,7 @@ s = {
     ],
     "allowed_mentions": discord.AllowedMentions(users=False, roles=False),
     "help_command": None,
-    "activity":discord.Game("help: `g.help`")
+    "activity":discord.Game("help: g.help")
 }
 # bot object
 bot = commands.Bot(**s)
@@ -34,6 +34,7 @@ bot.storydata = data.storydata
 bot.talkdata = data.talkdata
 bot.commandsdata = data.commandsdata
 bot.fielddata = data.fielddata
+bot.itemdata = data.itemdata
 
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):

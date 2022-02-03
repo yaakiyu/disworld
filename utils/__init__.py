@@ -1,12 +1,13 @@
 import discord
 from .easydb import EasyDB
-from .easymenu import EasyMenu
+from .easymenu import EasyMenu, EasyButton
 from .error import ErrorEmbed, RequireFault
 
 __all__ = [
     "EasyDB",
     "EasyMenu",
     "ErrorEmbed",
+    "EasyButton",
     "RequireFault",
     "data_converter"
 ]

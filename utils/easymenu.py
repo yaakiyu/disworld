@@ -8,3 +8,11 @@ def EasyMenu(name:str, description:str, **options) -> dislash.SelectMenu:
         options=opt
     )
     return menu
+
+def EasyButton(label, id, color="green"):
+    color = getattr(dislash.ButtonStyle, color, None)
+    if not color:
+        raise KeyError("存在しない色です。")
+    return dislash.ActionRow(
+        dislash.Button(style=color, label=label, custom_id=id)
+    )

@@ -25,7 +25,7 @@ class EasyDB():
             raise TableNotFound("テーブルが見つかりませんでした。")
         self.cur.execute(f"DROP TABLE {table_name}")
         delattr(self, table_name)
-    
+
     def get_table(self, name: str):
         """テーブルを検索し、Tableオブジェクトを返す。"""
         if not hasattr(self, name):
