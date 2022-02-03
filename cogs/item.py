@@ -13,19 +13,20 @@ class Item(commands.Cog):
             # バージョンロック
             return await ctx.send("現在絶賛開発中...")
         userdata = self.bot.db.users[ctx.author.id][0]
-        if userdata[2] < 5:
-            return utils.RequireFault(ctx)
+        #if userdata[2] < 5:
+            #return await utils.RequireFault(ctx)
         udata = loads(self.bot.db.item.search(user=ctx.author.id)[0][1])
+        print(udata)
         embedpages = []
         em = discord.Embed(title="アイテム一覧", description="page:1")
         for id, count in udata.items():
             itemdata = self.bot.itemdata[int(id)]
             em.add_field(name=itemdata["name"], value=f"個数:{count}個")
-            if len(em.fields()) == 20:
+            if len(em.fields) == 20:
                 embedpages.append(em)
                 em = discord.Embed(title="アイテム一覧", 
                                    description=f"page:{len(embedpages)+1}")
-        if len(em.fields()):
+        if len(em.fields):
             embedpages.append(em)
         if len(embedpages) == 0:
             return await ctx.send(embed=utils.ErrorEmbed("エラー", "まだあなたは何のアイテムも持っていません。"))

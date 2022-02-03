@@ -2,3 +2,4 @@ __pycache__/
 *.db-journal
 *.db
 data/
+*.cpython
