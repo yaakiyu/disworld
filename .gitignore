@@ -3,3 +3,5 @@ __pycache__/
 *.db
 data/
 *.cpython
+poetry.lock
+pyproject.toml
