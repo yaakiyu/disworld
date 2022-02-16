@@ -15,6 +15,10 @@ class Talk(commands.Cog):
         e = discord.Embed(title="talk - 選択", description="誰と話すか決めてください。")
         if udata <= 2:
             opt = {"老人":"1"}
+        else:
+            opt = {}
+        if opt == {}:
+            return await ctx.send(embed=util.ErrorEmbed("エラー", "現在話せる相手がいません！"))
         menu = utils.EasyMenu("話し相手", "選択してください", **opt)
         msg = await ctx.send(embed=e, components=[menu])
         inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
