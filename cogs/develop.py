@@ -1,5 +1,5 @@
-from discord.ext import commands
-import discord
+from nextcord.ext import commands
+import nextcord as discord
 import dislash
 from dislash import slash_commands, Option
 

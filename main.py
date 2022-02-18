@@ -1,6 +1,6 @@
-import discord
+import nextcord as discord
 import os
-from discord.ext import commands
+from nextcord.ext import commands
 import utils
 import dislash
 import keep_alive
@@ -19,13 +19,11 @@ s = {
         667319675176091659, #takkunさん
         573836903091273729 #きのたこさん
     ],
-    "allowed_mentions": discord.AllowedMentions(users=False, roles=False),
     "help_command": None,
     "activity":discord.Game("help: g.help")
 }
 # bot object
 bot = commands.Bot(**s)
-bot.load_extension("jishaku")
 bot.db = utils.EasyDB("disworld.db")
 
 #data set

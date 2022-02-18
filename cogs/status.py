@@ -1,4 +1,4 @@
-from discord.ext import commands
+from nextcord.ext import commands
 from dislash import slash_commands
 import utils
 
