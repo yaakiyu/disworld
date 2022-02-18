@@ -6,6 +6,7 @@ class First(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         count = 0
+        self.bot.db.create_table("equipment", id="int", buki="int", buki2="int", bougu="int", akusesari="int")
         allcogs = os.listdir("cogs/")
         for s in allcogs:
             if not s.startswith("_"):

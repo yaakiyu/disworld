@@ -38,7 +38,8 @@ bot.itemdata = data.itemdata
 
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):
-    print("[SystemLog]", *args, **kwargs)
+    args = [a for a in args] + ["\033[0m"]
+    print("[SystemLog]\033[93m", *args, **kwargs)
 bot.print = prrint
 del prrint, data
 
