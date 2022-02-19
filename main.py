@@ -1,5 +1,6 @@
 print("disworld loading...")
 import discord
+print("nextcord was loaded")
 import os
 from discord.ext import commands
 import utils
