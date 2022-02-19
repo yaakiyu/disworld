@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 import inspect
-import nextcord.utils
+import discord.utils
 
 from typing import Any, Callable, ClassVar, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple, TypeVar, Type
 
@@ -43,7 +43,7 @@ __all__ = (
 CogT = TypeVar('CogT', bound='Cog')
 FuncT = TypeVar('FuncT', bound=Callable[..., Any])
 
-MISSING: Any = nextcord.utils.MISSING
+MISSING: Any = discord.utils.MISSING
 
 
 class CogMeta(type):
@@ -175,7 +175,7 @@ def _cog_special_method(func: FuncT) -> FuncT:
     return func
 
 
-class Cog(nextcord.ClientCog, metaclass=CogMeta):
+class Cog(discord.ClientCog, metaclass=CogMeta):
     """The base class that all cogs must inherit from.
 
     A cog is a collection of commands, listeners, and optional state to

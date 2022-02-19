@@ -1,4 +1,4 @@
-from nextcord import DiscordException
+from discord import DiscordException
 
 
 class ApplicationCommandError(DiscordException):

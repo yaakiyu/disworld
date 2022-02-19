@@ -1,7 +1,7 @@
 # type: ignore
-from nextcord import utils, AllowedMentions, File, InvalidArgument, Message
-from nextcord.http import Route
-from nextcord.flags import MessageFlags
+from discord import utils, AllowedMentions, File, InvalidArgument, Message
+from discord.http import Route
+from discord.flags import MessageFlags
 
 from ...interactions import ActionRow
 

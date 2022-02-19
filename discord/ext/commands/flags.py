@@ -32,11 +32,11 @@ from .errors import (
     MissingRequiredFlag,
 )
 
-from nextcord.utils import resolve_annotation
+from discord.utils import resolve_annotation
 from .view import StringView
 from .converter import run_converters
 
-from nextcord.utils import maybe_coroutine, MISSING
+from discord.utils import maybe_coroutine, MISSING
 from dataclasses import dataclass, field
 from typing import (
     Dict,

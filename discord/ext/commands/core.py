@@ -45,7 +45,7 @@ import functools
 import inspect
 import datetime
 
-import nextcord
+import discord as nextcord
 
 from .errors import *
 from .cooldowns import Cooldown, BucketType, CooldownMapping, MaxConcurrency, DynamicCooldownMapping

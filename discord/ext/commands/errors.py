@@ -26,7 +26,7 @@ from __future__ import annotations
 
 from typing import Optional, Any, TYPE_CHECKING, List, Callable, Type, Tuple, Union
 
-from nextcord.errors import ClientException, DiscordException
+from discord.errors import ClientException, DiscordException
 
 if TYPE_CHECKING:
     from inspect import Parameter
@@ -35,9 +35,9 @@ if TYPE_CHECKING:
     from .context import Context
     from .cooldowns import Cooldown, BucketType
     from .flags import Flag
-    from nextcord.abc import GuildChannel
-    from nextcord.threads import Thread
-    from nextcord.types.snowflake import Snowflake, SnowflakeList
+    from discord.abc import GuildChannel
+    from discord.threads import Thread
+    from discord.types.snowflake import Snowflake, SnowflakeList
 
 
 __all__ = (

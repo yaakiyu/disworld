@@ -8,8 +8,8 @@ from discord import (
     Attachment
 )
 
-from nextcord.ui import View
-from nextcord.utils import MISSING
+from discord.ui import View
+from discord.utils import MISSING
 
 from typing import (
     Any,

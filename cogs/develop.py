@@ -1,9 +1,9 @@
-from nextcord.ext import commands
-import nextcord as discord
+from discord.ext import commands
+import discord
 import dislash
 from dislash import slash_commands, Option
 
-dev_guilds = [794079140462460979, 914391660786503690, 903866784887762995]
+dev_guilds = [699120642796028014, 794079140462460979]
 
 class Develop(commands.Cog):
     def __init__(self, bot):

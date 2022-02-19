@@ -1,5 +1,5 @@
-from nextcord.ext import commands
-import nextcord as discord
+from discord.ext import commands
+import discord
 from dislash import slash_commands
 import utils
 import json

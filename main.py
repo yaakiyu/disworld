@@ -1,6 +1,7 @@
-import nextcord as discord
+print("disworld loading...")
+import discord
 import os
-from nextcord.ext import commands
+from discord.ext import commands
 import utils
 import dislash
 import keep_alive

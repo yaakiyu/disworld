@@ -35,7 +35,7 @@ import traceback
 import types
 from typing import Any, Callable, Mapping, List, Dict, TYPE_CHECKING, Optional, TypeVar, Type, Union
 
-import nextcord
+import discord as nextcord
 
 from .core import GroupMixin
 from .view import StringView

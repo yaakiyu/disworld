@@ -6,8 +6,8 @@ from enum import EnumMeta
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 
 import discord
-from nextcord.ext.commands import BucketType, Cooldown, CooldownMapping
-from nextcord.ext.commands.errors import ConversionError
+from discord.ext.commands import BucketType, Cooldown, CooldownMapping
+from discord.ext.commands.errors import ConversionError
 
 from ..interactions import BaseInteraction, SlashInteraction
 from ..interactions.application_command import OptionParam

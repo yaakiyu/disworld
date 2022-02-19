@@ -30,7 +30,7 @@ import re
 
 from typing import Optional, TYPE_CHECKING
 
-import nextcord.utils
+import discord.utils
 
 from .core import Group, Command
 from .errors import CommandError

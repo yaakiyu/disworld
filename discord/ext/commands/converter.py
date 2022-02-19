@@ -43,7 +43,7 @@ from typing import (
     runtime_checkable,
 )
 
-import nextcord
+import discord as nextcord
 from .errors import *
 
 if TYPE_CHECKING:
