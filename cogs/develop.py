@@ -16,7 +16,7 @@ class Develop(commands.Cog):
     )
     async def db(self, inter, content):
         if inter.author.id in self.bot.owner_ids:
-            await inter.reply("結果:" + self.bot.db.do(content), ephemeral=True)
+            await inter.reply("結果:" + str(self.bot.db.do(content)), ephemeral=True)
         else:
             await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
 

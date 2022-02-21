@@ -1,6 +1,5 @@
 print("disworld loading...")
 import discord
-print("nextcord was loaded")
 import os
 from discord.ext import commands
 import utils
@@ -39,6 +38,10 @@ bot.itemdata = data.itemdata
 slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):
     args = [a for a in args] + ["\033[0m"]
+    kwargs["sep"] = ""
+    if kwargs.get("mode"):
+        args = [f"\033[0m[\033[92m{kwargs.get('mode')}\033[0m]\033[93m"] + args
+        del kwargs["mode"]
     print("[SystemLog]\033[93m", *args, **kwargs)
 bot.print = prrint
 del prrint, data
@@ -51,5 +54,6 @@ else:
 
 # run
 keep_alive.keep_alive()
+bot.print("running...", mode="special")
 if mode == 0: bot.run(os.getenv("TOKEN"))
 elif mode in [1, 2]: bot.run(os.getenv("TOKEN2"))

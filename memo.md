@@ -25,3 +25,4 @@ help用データ。コマンドにはそれぞれtypeが存在する。　
 ## DBの仕様について
 users: id=int, name=str, story=int, level=int, exp=int, place=int, money=int
 item: user=int, data=str
+equipment: id=int, buki=int, buki2=int, bougu=int, akusesari=int
