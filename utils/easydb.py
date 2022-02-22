@@ -211,3 +211,7 @@ class Table():
             if commit:
                 self.conn.commit()
             raise UnknownType("コラム追加には成功したがデフォルトの自動選出に失敗しました。")
+
+    def rename_column(self, before, after, *, commit=False):
+        """(未完成)カラムの名前を変更します。tempというテーブルがないことが条件です。"""
+        pass
