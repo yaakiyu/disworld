@@ -28,7 +28,7 @@ class Equip(commands.Cog):
     async def _equiplist(self, ctx):
         # 装備を表示する関数
         u_equip = self.bot.db.equipment[ctx.author.id][0]
-        u_item = self.bot.db.item.search(user=ctx.author.id)[0]
+        u_item = self.bot.db.item[ctx.author.id][0]
 
     async def _equipset(self, ctx, args: list):
         # 装備する関数

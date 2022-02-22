@@ -70,7 +70,7 @@ class Shop(commands.Cog):
             else:
                 uitem[str(itemid)] += 1
             # itemテーブルへ書き込み
-            self.bot.db.item.update_item(f"user={ctx.author.id}", data=json.dumps(uitem))
+            self.bot.db.item.update_item(f"id={ctx.author.id}", data=json.dumps(uitem))
             udata[6] -= selected["money"]
             # moneyを減らしてusersテーブルへ書き込み
             self.bot.db.users.update_item(f"id={ctx.author.id}", money=udata[6])

@@ -8,18 +8,16 @@ class Special(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("called on_ready")
+        self.bot.print("called on_ready")
         self.bot.db = utils.EasyDB("disworld.db")
-        self.bot.db.create_table("user", id="int", name="str", story="int", level="int", exp="int", place="int", money="int")
-        for old in self.bot.db.users.get_all():
-            self.bot.db.user.add_item(old[0], old[1], old[2], old[3], old[4], old[5], 0)
-        self.bot.db.delete_table("users")
-        self.bot.db.create_table("users", id="int", name="str", story="int", level="int", exp="int", place="int", money="int")
-        for old in self.bot.db.user.get_all():
-            self.bot.db.users.add_item(old[0], old[1], old[2], old[3], old[4], old[5], 0)
-        self.bot.db.delete_table("user")
+        self.bot.db.create_table("temp",id="int", data="str")
+        all = self.bot.db.item.get_all()
+        for l in all:
+            self.bot.db.temp.add_item(l[0], l[1])
+        self.bot.db.delete_table("item")
+        self.bot.db.do("ALTER TABLE temp RENAME TO item")
         self.bot.db.commit()
-        print("all success")
+        self.bot.print("done")
 
 def setup(bot):
     bot.add_cog(Special(bot))

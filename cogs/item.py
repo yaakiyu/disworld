@@ -15,7 +15,7 @@ class Item(commands.Cog):
         userdata = self.bot.db.users[ctx.author.id][0]
         if userdata[2] < 5:
             return await utils.RequireFault(ctx)
-        udata = loads(self.bot.db.item.search(user=ctx.author.id)[0][1])
+        udata = loads(self.bot.db.item[ctx.author.id][0][1])
         print(udata)
         embedpages = []
         em = discord.Embed(title="アイテム一覧", description="page:1")

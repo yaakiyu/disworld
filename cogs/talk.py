@@ -10,7 +10,7 @@ class Talk(commands.Cog):
     async def _talk(self, ctx):
         if not self.bot.db.users.is_in(id=ctx.author.id):
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
-        if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 1:
+        if (udata:=self.bot.db.users[ctx.author.id][0][2]) < 1:
             return await utils.RequireFault(ctx)
         e = discord.Embed(title="talk - 選択", description="誰と話すか決めてください。")
         if udata <= 2:
@@ -25,7 +25,7 @@ class Talk(commands.Cog):
 
         if label:=int(inter.select_menu.selected_options[0].value) == 1:
             talk = self.bot.talkdata["1"]["ja"]
-            if self.bot.db.users.search(id=ctx.author.id)[0][2] == 1:
+            if self.bot.db.users[ctx.author.id][0][2] == 1:
                 self.bot.db.users.update_item(f"id={ctx.author.id}", story=2)
             e = discord.Embed(title="老人に話しかけた。",description=utils.data_converter(talk, ctx))
         await msg.edit(embed=e,components=[])
