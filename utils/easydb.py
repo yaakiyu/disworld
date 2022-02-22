@@ -185,8 +185,19 @@ class Table():
         if commit:
             self.conn.commit()
 
-    def add_column(self, name:str, typ:str, default=None, *, first=False, after=None, commit:bool=False):
-        assert first == False or after is None, "firstとafterの両方があってはいけません。"
+    def add_column(
+        self, name:str, typ:str, default=None, *, 
+        first: bool=False, after:Optional[str]=None, commit:bool=False
+    ):
+        """テーブルにカラムを追加します。
+        name: 新カラムの名前
+        typ: 新カラムのタイプ指定
+        default=None: デフォルト値。これを指定しないと適当なものが選出される。
+        *
+        first(キーワード引数): カラムを先頭に持ってくるかどうか。afterとは併用不可。
+        after(キーワード引数): どのカラムの直後に持ってくるか(str)。firstとは併用不可。
+        """
+        assert (first == False) or (after is None), "firstとafterの両方があってはいけません。"
         after = "" if after is None else " AFTER "+after
         first = " FIRST" if first else ""
         self.cur.execute(f"ALTER TABLE {self.name} ADD {name} {typ}{first}{after}")
