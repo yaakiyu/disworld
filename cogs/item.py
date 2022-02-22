@@ -12,6 +12,8 @@ class Item(commands.Cog):
         if self.bot.version == "0.2" and ctx.author.id not in self.bot.owner_ids:
             # バージョンロック
             return await ctx.send("現在絶賛開発中...")
+        if not self.bot.db.users.is_in(id=ctx.author.id):
+            return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
         userdata = self.bot.db.users[ctx.author.id][0]
         if userdata[2] < 5:
             return await utils.RequireFault(ctx)
