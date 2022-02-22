@@ -6,8 +6,8 @@ class Equip(commands.Cog):
         self.bot = bot
 
     async def _equip(self, ctx, arg):
-        # バージョンロック
         if self.bot.version == "0.2":
+            # バージョンロック
             return await ctx.send("主人公はまだ装備の仕方を知らない...")
         if not self.bot.db.equipment.is_in(id=ctx.author.id):
             self.bot.db.equipment.add_item(ctx.author.id, 0, 0, 0, 0)
@@ -21,7 +21,8 @@ class Equip(commands.Cog):
         if args[0] in ["view", "list"]:
             # 装備を表示
             await self._equiplist(ctx)
-        if args[0] in ["del", "remove", "rm", "lift", "delete"]:
+        if args[0] in ["del", "remove", "rm", "lift", "delete", "takeoff", "unset",
+                       "unequip"]:
             # 装備を解除
             await self._equiprm(ctx, args)
 
