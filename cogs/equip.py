@@ -46,9 +46,19 @@ class Equip(commands.Cog):
             e.add_field(name=namelist[i-1], value=val)
 
     async def _equipset(self, ctx, args: list):
-        # 装備する関数
+        # 装備する関数 (こんがらがったのでコメントアウト)
+        #u_equip = self.bot.db.equipment[ctx.author.id][0]
+        #u_item = json.loads(self.bot.db.item[ctx.author.id][0][1])
+        #e = discord.Embed(title="変更する装備を選んでください", description=" ")
+        #menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["Option 1", "value 1"],["Option 2", "value 2"],["Option 3", "value 3"]})
+        #namelist = ["武器", "武器2", "防具", "アクセサリ"]
+        #for i, m in enumerate(u_equip):
+        #    if i == 0 or m == 0:
+        #        continue
+        #    val = self.bot.itemdata[u_item[str(m)]]["name"]
+        #    e.add_field(name=namelist[i-1], value=val)
         pass
-
+    
     async def _equiprm(self, ctx, args: list):
         # 装備を削除する関数
         pass
