@@ -58,14 +58,12 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(m)]]["name"]
             e.add_field(name=namelist[i-1], value=val)
 
-        
-
     async def _equiprm(self, ctx, args: list):
         # 装備を削除する「ものを選択する」関数（処理を分けた方がよいと判断）
         u_equip = self.bot.db.equipment[ctx.author.id][0]
         u_item = json.loads(self.bot.db.item[ctx.author.id][0][1])
         e = discord.Embed(title="削除する装備を選んでください", description=" ")
-        menu = utils.EasyMenu(name="choice_e_del",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
+        menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
         namelist = ["武器", "武器2", "防具", "アクセサリ"]
         for i, m in enumerate(u_equip):
             if i == 0 or m == 0:
