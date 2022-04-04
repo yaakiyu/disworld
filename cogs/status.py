@@ -1,5 +1,5 @@
 from discord.ext import commands
-from dislash import slash_commands
+# from dislash import slash_commands
 import utils
 
 class Status(commands.Cog):
@@ -13,9 +13,9 @@ class Status(commands.Cog):
         if udata == 6:
             pass
 
-    @slash_commands.command(description="あなたのステータスを見ることができます")
-    async def status(self, inter):
-        await self._status(inter)
+#    @slash_commands.command(description="あなたのステータスを見ることができます")
+#    async def status(self, inter):
+#        await self._status(inter)
 
     @commands.command(name="status", aliases=["st", "stats"])
     async def c_status(self, ctx):
@@ -23,4 +23,4 @@ class Status(commands.Cog):
 
 
 async def setup(bot):
-    bot.add_cog(Status(bot))
+    await bot.add_cog(Status(bot))

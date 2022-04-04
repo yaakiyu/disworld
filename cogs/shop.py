@@ -1,6 +1,6 @@
 from discord.ext import commands
 import discord
-from dislash import slash_commands
+# from dislash import slash_commands
 import utils
 import json
 
@@ -82,9 +82,9 @@ class Shop(commands.Cog):
                 components=[]
             )
 
-    @slash_commands.command(description="お買い物をします。")
-    async def shop(self, inter):
-        await self._shop(inter)
+#    @slash_commands.command(description="お買い物をします。")
+#    async def shop(self, inter):
+#        await self._shop(inter)
 
     @commands.command(name="shop")
     async def c_shop(self, ctx):
@@ -109,4 +109,4 @@ class Shop(commands.Cog):
 
 
 async def setup(bot):
-    bot.add_cog(Shop(bot))
+    await bot.add_cog(Shop(bot))

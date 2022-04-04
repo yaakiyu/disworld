@@ -1,6 +1,6 @@
 from discord.ext import commands
 import discord
-from dislash import slash_commands, Option
+# from dislash import slash_commands, Option
 
 class Help(commands.Cog):
     def __init__(self, bot):
@@ -41,12 +41,12 @@ class Help(commands.Cog):
                 e.add_field(name="説明", value="コマンドが見つかりませんでした。")
         await ctx.reply(embed=e)
 
-    @slash_commands.command(
-        description="このbotのヘルプ",
-        options=[Option("command", "詳しくhelpを見たいコマンド", required=False)]
-    )
-    async def help(self, inter, command=None):
-        await self._help(inter, command)
+#    @slash_commands.command(
+#        description="このbotのヘルプ",
+#        options=[Option("command", "詳しくhelpを見たいコマンド", required=False)]
+#    )
+#    async def help(self, inter, command=None):
+#        await self._help(inter, command)
 
     @commands.command(name="help")
     async def c_help(self, ctx, command=None):
@@ -60,13 +60,13 @@ class Help(commands.Cog):
         e.add_field(name="このゲームを遊んでくれている人の数", value=len(self.bot.db.users.get_all()))
         await ctx.send(embed=e)
 
-    @slash_commands.command(description="このbotの情報")
-    async def info(self, inter):
-        await self._info(inter)
+#    @slash_commands.command(description="このbotの情報")
+#    async def info(self, inter):
+#        await self._info(inter)
     
     @commands.command("info")
     async def c_info(self, ctx):
         await self._info(ctx)
 
 async def setup(bot):
-    bot.add_cog(Help(bot))
+    await bot.add_cog(Help(bot))

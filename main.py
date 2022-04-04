@@ -3,7 +3,6 @@ import discord
 import os
 from discord.ext import commands
 import utils
-import dislash
 import keep_alive
 import data
 # mode(0=normal, 1=test, 2=special)
@@ -35,7 +34,6 @@ bot.commandsdata = data.commandsdata
 bot.fielddata = data.fielddata
 bot.itemdata = data.itemdata
 
-slash = dislash.SlashClient(bot)
 def prrint(*args, **kwargs):
     args = [a for a in args] + ["\033[0m"]
     kwargs["sep"] = ""
@@ -53,10 +51,12 @@ async def on_ready():
         await bot.load_extension("cogs._first")
     else:
         await bot.load_extension("cogs._special")
-    bot.dispatch("on_full_ready")
+    bot.dispatch("full_ready")
 
 # run
 keep_alive.keep_alive()
 bot.print(f"running mode {mode}...", mode="special")
-if mode == 0: bot.run(os.getenv("TOKEN"))
-elif mode in [1, 2]: bot.run(os.getenv("TOKEN2"))
+if mode == 0:
+    bot.run(os.getenv("TOKEN"))
+elif mode in [1, 2]:
+    bot.run(os.getenv("TOKEN2"))

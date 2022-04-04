@@ -1,6 +1,6 @@
 from discord.ext import commands
 import discord
-from dislash import slash_commands
+# from dislash import slash_commands
 import utils
 
 class Story(commands.Cog):
@@ -37,9 +37,9 @@ class Story(commands.Cog):
         e = discord.Embed(title=f"Ep.{label}", description=storydata)
         await msg.edit(embed=e, components=[])
 
-    @slash_commands.command(description="ストーリーです。")
-    async def story(self, inter):
-        await self._story(inter)
+#    @slash_commands.command(description="ストーリーです。")
+#    async def story(self, inter):
+#        await self._story(inter)
 
     @commands.command(name="story")
     async def c_story(self, ctx):
@@ -47,4 +47,4 @@ class Story(commands.Cog):
 
 
 async def setup(bot):
-    bot.add_cog(Story(bot))
+    await bot.add_cog(Story(bot))

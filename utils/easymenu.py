@@ -1,4 +1,4 @@
-import dislash
+"""import dislash
 
 def EasyMenu(name:str, description:str, **options) -> dislash.SelectMenu:
     opt = [dislash.SelectOption(k,v) for k,v in options.items()]
@@ -15,4 +15,4 @@ def EasyButton(label, id, color="green"):
         raise KeyError("存在しない色です。")
     return dislash.ActionRow(
         dislash.Button(style=color, label=label, custom_id=id)
-    )
+    )"""

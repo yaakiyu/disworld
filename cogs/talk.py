@@ -1,6 +1,6 @@
 from discord.ext import commands
 import discord
-from dislash import slash_commands
+# from dislash import slash_commands
 import utils
 
 class Talk(commands.Cog):
@@ -30,9 +30,9 @@ class Talk(commands.Cog):
             e = discord.Embed(title="老人に話しかけた。",description=utils.data_converter(talk, ctx))
         await msg.edit(embed=e,components=[])
 
-    @slash_commands.command(description="指定した人と会話する。")
-    async def talk(self, inter):
-        await self._talk(inter)
+#    @slash_commands.command(description="指定した人と会話する。")
+#    async def talk(self, inter):
+#        await self._talk(inter)
 
     @commands.command(name="talk")
     async def c_talk(self, ctx):
@@ -40,4 +40,4 @@ class Talk(commands.Cog):
 
 
 async def setup(bot):
-    bot.add_cog(Talk(bot))
+    await bot.add_cog(Talk(bot))

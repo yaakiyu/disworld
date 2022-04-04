@@ -1,6 +1,6 @@
 from discord.ext import commands
 import discord
-from dislash import slash_commands, OptionParam
+# from dislash import slash_commands, OptionParam
 import utils
 import json
 
@@ -76,9 +76,9 @@ class Equip(commands.Cog):
     async def c_equip(self, ctx, *, arg=None):
         return await self._equip(ctx, arg)
 
-    @slash_commands.command(description="装備を確認したり、装備したりします。")
-    async def equip(self, inter, arg:str = OptionParam("None", desc="操作")):
-        return await self._equip(inter, (arg if arg != "None" else None))
+#    @slash_commands.command(description="装備を確認したり、装備したりします。")
+#    async def equip(self, inter, arg:str = OptionParam("None", desc="操作")):
+#        return await self._equip(inter, (arg if arg != "None" else None))
 
 async def setup(bot):
-    bot.add_cog(Equip(bot))
+    await bot.add_cog(Equip(bot))

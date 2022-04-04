@@ -1,7 +1,5 @@
 from discord.ext import commands
 import discord
-import dislash
-from dislash import slash_commands, Option
 
 dev_guilds = [699120642796028014, 794079140462460979]
 
@@ -9,22 +7,22 @@ class Develop(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @slash_commands.command(
-        guild_ids=dev_guilds,
-        description="管理者専用DB操作コマンド",
-        options=[Option("content", "実行するsql構文", required=True)]
-    )
+#    @slash_commands.command(
+#        guild_ids=dev_guilds,
+#        description="管理者専用DB操作コマンド",
+#        options=[Option("content", "実行するsql構文", required=True)]
+#    )
     async def db(self, inter, content):
         if inter.author.id in self.bot.owner_ids:
             await inter.reply("結果:" + str(self.bot.db.do(content)), ephemeral=True)
         else:
             await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
 
-    @slash_commands.command(
-        guild_ids=dev_guilds,
-        description="管理者専用ヘルプコマンド",
-        options=[Option("command", "詳しいヘルプを見たいコマンド名", required=False)]
-    )
+#    @slash_commands.command(
+#        guild_ids=dev_guilds,
+#        description="管理者専用ヘルプコマンド",
+#        options=[Option("command", "詳しいヘルプを見たいコマンド名", required=False)]
+#    )
     async def admin_help(self, inter, command=None):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
@@ -38,18 +36,18 @@ class Develop(commands.Cog):
             e = discord.Embed(title="コマンドが見つかりませんでした。")
         await inter.reply(embed=e, ephemeral=True)
 
-    @slash_commands.command(
-        guild_ids=dev_guilds,
-        description="管理者専用データを検索",
-        options=[
-            Option("table_name", "データを検索したいテーブルを選択", required=True, 
-            choices=[
-                dislash.OptionChoice("users", "users"),
-                dislash.OptionChoice("item", "item")
-            ]),
-            Option("cid", "検索したいID", required=True)
-        ]
-    )
+#    @slash_commands.command(
+#        guild_ids=dev_guilds,
+#        description="管理者専用データを検索",
+#        options=[
+#            Option("table_name", "データを検索したいテーブルを選択", required=True, 
+#            choices=[
+#                dislash.OptionChoice("users", "users"),
+#                dislash.OptionChoice("item", "item")
+#            ]),
+#            Option("cid", "検索したいID", required=True)
+#        ]
+#    )
     async def checkdata(self,inter,table_name,cid):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
@@ -60,4 +58,4 @@ class Develop(commands.Cog):
 
 
 async def setup(bot):
-    bot.add_cog(Develop(bot))
+    await bot.add_cog(Develop(bot))

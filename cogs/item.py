@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from dislash import slash_commands
+# from dislash import slash_commands
 import utils
 from json import loads
 
@@ -60,10 +60,10 @@ class Item(commands.Cog):
     async def c_item(self, ctx):
         await self._item(ctx)
 
-    @slash_commands.command(description="自分の持っているアイテムの確認をします。")
-    async def item(self, inter):
-        await self._item(inter)
+#    @slash_commands.command(description="自分の持っているアイテムの確認をします。")
+#    async def item(self, inter):
+#        await self._item(inter)
 
 
 async def setup(bot):
-    bot.add_cog(Item(bot))
+    await bot.add_cog(Item(bot))

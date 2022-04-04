@@ -52,4 +52,4 @@ class Error(commands.Cog):
 
 
 async def setup(bot):
-    bot.add_cog(Error(bot))
+    await bot.add_cog(Error(bot))
