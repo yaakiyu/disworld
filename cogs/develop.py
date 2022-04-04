@@ -59,5 +59,5 @@ class Develop(commands.Cog):
         await inter.reply(dict(zip(data.values, data[int(cid)][0])), ephemeral=True)
 
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Develop(bot))

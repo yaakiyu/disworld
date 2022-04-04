@@ -80,5 +80,5 @@ class Equip(commands.Cog):
     async def equip(self, inter, arg:str = OptionParam("None", desc="操作")):
         return await self._equip(inter, (arg if arg != "None" else None))
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Equip(bot))

@@ -39,5 +39,5 @@ class Talk(commands.Cog):
         await self._talk(ctx)
 
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Talk(bot))

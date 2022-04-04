@@ -19,5 +19,5 @@ class Special(commands.Cog):
         self.bot.db.commit()
         self.bot.print("done")
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Special(bot))

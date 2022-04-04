@@ -263,7 +263,6 @@ class OptionParam:
         discord.VoiceChannel: 7,
         discord.CategoryChannel: 7,
         discord.StageChannel: 7,
-        discord.StoreChannel: 7,
         discord.Role: 8,
         Union[discord.Member, discord.Role]: 9,
         discord.abc.Snowflake: 9,

@@ -46,14 +46,17 @@ def prrint(*args, **kwargs):
 bot.print = prrint
 del prrint, data
 
-# loading first cog
-if mode != 2:
-    bot.load_extension("cogs._first")
-else:
-    bot.load_extension("cogs._special")
+@bot.event
+async def on_ready():
+    # loading first cog
+    if mode != 2:
+        await bot.load_extension("cogs._first")
+    else:
+        await bot.load_extension("cogs._special")
+    bot.dispatch("on_full_ready")
 
 # run
 keep_alive.keep_alive()
-bot.print("running...", mode="special")
+bot.print(f"running mode {mode}...", mode="special")
 if mode == 0: bot.run(os.getenv("TOKEN"))
 elif mode in [1, 2]: bot.run(os.getenv("TOKEN2"))

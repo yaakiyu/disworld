@@ -65,5 +65,5 @@ class Item(commands.Cog):
         await self._item(inter)
 
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Item(bot))

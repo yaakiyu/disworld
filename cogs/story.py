@@ -46,5 +46,5 @@ class Story(commands.Cog):
         await self._story(ctx)
 
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Story(bot))

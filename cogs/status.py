@@ -22,5 +22,5 @@ class Status(commands.Cog):
         await self._status(ctx)
 
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Status(bot))

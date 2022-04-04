@@ -1,5 +1,4 @@
 from discord import (
-    InvalidArgument,
     AllowedMentions,
     File,
     GuildSticker, StickerItem,
@@ -223,14 +222,14 @@ async def send(
     _components = None
 
     if embed is not None and embeds is not None:
-        raise InvalidArgument('cannot pass both embed and embeds parameter to send()')
+        raise KeyError('cannot pass both embed and embeds parameter to send()')
 
     if embed is not None:
         embed = embed.to_dict()
 
     elif embeds is not None:
         if len(embeds) > 10:
-            raise InvalidArgument('embeds parameter must be a list of up to 10 elements')
+            raise KeyError('embeds parameter must be a list of up to 10 elements')
         embeds = [embed.to_dict() for embed in embeds]
 
     if stickers is not None:
@@ -251,11 +250,11 @@ async def send(
         try:
             reference = reference.to_message_reference_dict()
         except AttributeError:
-            raise InvalidArgument('reference parameter must be Message, MessageReference, or PartialMessage') from None
+            raise KeyError('reference parameter must be Message, MessageReference, or PartialMessage') from None
 
     if view:
         if not hasattr(view, '__discord_ui_view__'):
-            raise InvalidArgument(f'view parameter must be View not {view.__class__!r}')
+            raise KeyError(f'view parameter must be View not {view.__class__!r}')
 
         _components = view.to_components()
     else:
@@ -265,7 +264,7 @@ async def send(
         # This is not needed, but some users still prefer
         # dislash style of sending components so yeah
         if len(components) > 5:
-            raise InvalidArgument("components must be a list of up to 5 action rows")
+            raise KeyError("components must be a list of up to 5 action rows")
         wrapped = []
         for comp in components:
             if isinstance(comp, ActionRow):
@@ -277,11 +276,11 @@ async def send(
             components.append(comp.to_dict())
 
     if file is not None and files is not None:
-        raise InvalidArgument('cannot pass both file and files parameter to send()')
+        raise KeyError('cannot pass both file and files parameter to send()')
 
     if file is not None:
         if not isinstance(file, File):
-            raise InvalidArgument('file parameter must be File')
+            raise KeyError('file parameter must be File')
 
         try:
             data = await state.http.send_files(
@@ -302,9 +301,9 @@ async def send(
 
     elif files is not None:
         if len(files) > 10:
-            raise InvalidArgument('files parameter must be a list of up to 10 elements')
+            raise KeyError('files parameter must be a list of up to 10 elements')
         elif not all(isinstance(file, File) for file in files):
-            raise InvalidArgument('files parameter must be a list of File')
+            raise KeyError('files parameter must be a list of File')
 
         try:
             data = await state.http.send_files(
@@ -453,7 +452,7 @@ async def edit(
     if content is not MISSING:
         payload['content'] = str(content) if content is not None else None
     if embed is not MISSING and embeds is not MISSING:
-        raise InvalidArgument('cannot pass both embed and embeds parameter to edit()')
+        raise KeyError('cannot pass both embed and embeds parameter to edit()')
 
     if embed is not MISSING:
         payload['embeds'] = [] if embed is None else [embed.to_dict()]

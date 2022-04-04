@@ -68,5 +68,5 @@ class Help(commands.Cog):
     async def c_info(self, ctx):
         await self._info(ctx)
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Help(bot))

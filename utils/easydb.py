@@ -77,7 +77,7 @@ class Table():
             raise TableNotFound("テーブルが見つかりませんでした。")
         self.cur.execute("select sql from SQLITE_MASTER where type='table' and name=?", (self.name,))
         sql = self.cur.fetchall()[0][0]
-        sql = sql.split(f"{self.name}(")[1].replace(")", "")
+        sql = sql.split(f"{self.name}(")[-1].replace(")", "")
         self.values = {a.split()[0]:a.split()[1] for a in sql.split(", ")}
 
     def __getitem__(self, item):

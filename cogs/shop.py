@@ -108,5 +108,5 @@ class Shop(commands.Cog):
         self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
 
 
-def setup(bot):
+async def setup(bot):
     bot.add_cog(Shop(bot))
