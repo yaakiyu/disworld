@@ -25,11 +25,13 @@ from __future__ import annotations
 
 import array
 import asyncio
-import collections.abc
 from typing import (
     Any,
+    AsyncIterable,
     AsyncIterator,
+    Awaitable,
     Callable,
+    Coroutine,
     Dict,
     ForwardRef,
     Generic,
@@ -38,8 +40,10 @@ from typing import (
     List,
     Literal,
     Mapping,
+    NamedTuple,
     Optional,
     Protocol,
+    Set,
     Sequence,
     Tuple,
     Type,
@@ -61,10 +65,10 @@ import sys
 import types
 import warnings
 
-from .errors import InvalidArgument
+import yarl
 
 try:
-    import orjson
+    import orjson  # type: ignore
 except ModuleNotFoundError:
     HAS_ORJSON = False
 else:
@@ -96,6 +100,9 @@ class _MissingSentinel:
     def __bool__(self):
         return False
 
+    def __hash__(self):
+        return 0
+
     def __repr__(self):
         return '...'
 
@@ -121,7 +128,7 @@ class _cached_property:
 if TYPE_CHECKING:
     from functools import cached_property as cached_property
 
-    from typing_extensions import ParamSpec
+    from typing_extensions import ParamSpec, Self
 
     from .permissions import Permissions
     from .abc import Snowflake
@@ -131,16 +138,22 @@ if TYPE_CHECKING:
     class _RequestLike(Protocol):
         headers: Mapping[str, Any]
 
-
     P = ParamSpec('P')
+
+    MaybeAwaitableFunc = Callable[P, 'MaybeAwaitable[T]']
+
+    _SnowflakeListBase = array.array[int]
 
 else:
     cached_property = _cached_property
+    _SnowflakeListBase = array.array
 
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
-_Iter = Union[Iterator[T], AsyncIterator[T]]
+_Iter = Union[Iterable[T], AsyncIterable[T]]
+Coro = Coroutine[Any, Any, T]
+MaybeAwaitable = Union[T, Awaitable[T]]
 
 
 class CachedSlotProperty(Generic[T, T_co]):
@@ -176,7 +189,7 @@ class classproperty(Generic[T_co]):
     def __get__(self, instance: Optional[Any], owner: Type[Any]) -> T_co:
         return self.fget(owner)
 
-    def __set__(self, instance, value) -> None:
+    def __set__(self, instance: Optional[Any], value: Any) -> None:
         raise AttributeError('cannot set attribute')
 
 
@@ -187,7 +200,7 @@ def cached_slot_property(name: str) -> Callable[[Callable[[T], T_co]], CachedSlo
     return decorator
 
 
-class SequenceProxy(Generic[T_co], collections.abc.Sequence):
+class SequenceProxy(Sequence[T_co]):
     """Read-only proxy of a Sequence."""
 
     def __init__(self, proxied: Sequence[T_co]):
@@ -208,7 +221,7 @@ class SequenceProxy(Generic[T_co], collections.abc.Sequence):
     def __reversed__(self) -> Iterator[T_co]:
         return reversed(self.__proxied)
 
-    def index(self, value: Any, *args, **kwargs) -> int:
+    def index(self, value: Any, *args: Any, **kwargs: Any) -> int:
         return self.__proxied.index(value, *args, **kwargs)
 
     def count(self, value: Any) -> int:
@@ -237,16 +250,16 @@ def parse_time(timestamp: Optional[str]) -> Optional[datetime.datetime]:
 
 
 def copy_doc(original: Callable) -> Callable[[T], T]:
-    def decorator(overriden: T) -> T:
-        overriden.__doc__ = original.__doc__
-        overriden.__signature__ = _signature(original)  # type: ignore
-        return overriden
+    def decorator(overridden: T) -> T:
+        overridden.__doc__ = original.__doc__
+        overridden.__signature__ = _signature(original)  # type: ignore
+        return overridden
 
     return decorator
 
 
-def deprecated(instead: Optional[str] = None) -> Callable[[Callable[[P], T]], Callable[[P], T]]:
-    def actual_decorator(func: Callable[[P], T]) -> Callable[[P], T]:
+def deprecated(instead: Optional[str] = None) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    def actual_decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def decorated(*args: P.args, **kwargs: P.kwargs) -> T:
             warnings.simplefilter('always', DeprecationWarning)  # turn off filter
@@ -276,19 +289,24 @@ def oauth_url(
     """A helper function that returns the OAuth2 URL for inviting the bot
     into guilds.
 
+    .. versionchanged:: 2.0
+
+        ``permissions``, ``guild``, ``redirect_uri``, and ``scopes`` parameters
+        are now keyword-only.
+
     Parameters
     -----------
     client_id: Union[:class:`int`, :class:`str`]
         The client ID for your bot.
-    permissions: :class:`~nextcord.Permissions`
+    permissions: :class:`~discord.Permissions`
         The permissions you're requesting. If not given then you won't be requesting any
         permissions.
-    guild: :class:`~nextcord.abc.Snowflake`
+    guild: :class:`~discord.abc.Snowflake`
         The guild to pre-select in the authorization screen, if available.
     redirect_uri: :class:`str`
         An optional valid redirect URI.
     scopes: Iterable[:class:`str`]
-        An optional valid list of scopes. Defaults to ``('bot',)``.
+        An optional valid list of scopes. Defaults to ``('bot', 'applications.commands')``.
 
         .. versionadded:: 1.7
     disable_guild_select: :class:`bool`
@@ -302,7 +320,7 @@ def oauth_url(
         The OAuth2 URL for inviting the bot into guilds.
     """
     url = f'https://discord.com/oauth2/authorize?client_id={client_id}'
-    url += '&scope=' + '+'.join(scopes or ('bot',))
+    url += '&scope=' + '+'.join(scopes or ('bot', 'applications.commands'))
     if permissions is not MISSING:
         url += f'&permissions={permissions.value}'
     if guild is not MISSING:
@@ -355,39 +373,121 @@ def time_snowflake(dt: datetime.datetime, high: bool = False) -> int:
         The snowflake representing the time given.
     """
     discord_millis = int(dt.timestamp() * 1000 - DISCORD_EPOCH)
-    return (discord_millis << 22) + (2 ** 22 - 1 if high else 0)
+    return (discord_millis << 22) + (2**22 - 1 if high else 0)
 
 
-def find(predicate: Callable[[T], Any], seq: Iterable[T]) -> Optional[T]:
-    """A helper to return the first element found in the sequence
+def _find(predicate: Callable[[T], Any], iterable: Iterable[T], /) -> Optional[T]:
+    return next((element for element in iterable if predicate(element)), None)
+
+
+async def _afind(predicate: Callable[[T], Any], iterable: AsyncIterable[T], /) -> Optional[T]:
+    async for element in iterable:
+        if predicate(element):
+            return element
+
+    return None
+
+
+@overload
+def find(predicate: Callable[[T], Any], iterable: Iterable[T], /) -> Optional[T]:
+    ...
+
+
+@overload
+def find(predicate: Callable[[T], Any], iterable: AsyncIterable[T], /) -> Coro[Optional[T]]:
+    ...
+
+
+def find(predicate: Callable[[T], Any], iterable: _Iter[T], /) -> Union[Optional[T], Coro[Optional[T]]]:
+    r"""A helper to return the first element found in the sequence
     that meets the predicate. For example: ::
 
-        member = nextcord.utils.find(lambda m: m.name == 'Mighty', channel.guild.members)
+        member = discord.utils.find(lambda m: m.name == 'Mighty', channel.guild.members)
 
-    would find the first :class:`~nextcord.Member` whose name is 'Mighty' and return it.
+    would find the first :class:`~discord.Member` whose name is 'Mighty' and return it.
     If an entry is not found, then ``None`` is returned.
 
     This is different from :func:`py:filter` due to the fact it stops the moment it finds
     a valid entry.
 
+    .. versionchanged:: 2.0
+
+        Both parameters are now positional-only.
+
+    .. versionchanged:: 2.0
+
+        The ``iterable`` parameter supports :term:`asynchronous iterable`\s.
+
     Parameters
     -----------
     predicate
         A function that returns a boolean-like result.
-    seq: :class:`collections.abc.Iterable`
-        The iterable to search through.
+    iterable: Union[:class:`collections.abc.Iterable`, :class:`collections.abc.AsyncIterable`]
+        The iterable to search through. Using a :class:`collections.abc.AsyncIterable`,
+        makes this function return a :term:`coroutine`.
     """
 
-    for element in seq:
-        if predicate(element):
-            return element
+    return (
+        _find(predicate, iterable)  # type: ignore
+        if hasattr(iterable, '__iter__')  # isinstance(iterable, collections.abc.Iterable) is too slow
+        else _afind(predicate, iterable)  # type: ignore
+    )
+
+
+def _get(iterable: Iterable[T], /, **attrs: Any) -> Optional[T]:
+    # global -> local
+    _all = all
+    attrget = attrgetter
+
+    # Special case the single element call
+    if len(attrs) == 1:
+        k, v = attrs.popitem()
+        pred = attrget(k.replace('__', '.'))
+        return next((elem for elem in iterable if pred(elem) == v), None)
+
+    converted = [(attrget(attr.replace('__', '.')), value) for attr, value in attrs.items()]
+    for elem in iterable:
+        if _all(pred(elem) == value for pred, value in converted):
+            return elem
     return None
 
 
-def get(iterable: Iterable[T], **attrs: Any) -> Optional[T]:
+async def _aget(iterable: AsyncIterable[T], /, **attrs: Any) -> Optional[T]:
+    # global -> local
+    _all = all
+    attrget = attrgetter
+
+    # Special case the single element call
+    if len(attrs) == 1:
+        k, v = attrs.popitem()
+        pred = attrget(k.replace('__', '.'))
+        async for elem in iterable:
+            if pred(elem) == v:
+                return elem
+        return None
+
+    converted = [(attrget(attr.replace('__', '.')), value) for attr, value in attrs.items()]
+
+    async for elem in iterable:
+        if _all(pred(elem) == value for pred, value in converted):
+            return elem
+    return None
+
+
+@overload
+def get(iterable: Iterable[T], /, **attrs: Any) -> Optional[T]:
+    ...
+
+
+@overload
+def get(iterable: AsyncIterable[T], /, **attrs: Any) -> Coro[Optional[T]]:
+    ...
+
+
+def get(iterable: _Iter[T], /, **attrs: Any) -> Union[Optional[T], Coro[Optional[T]]]:
     r"""A helper that returns the first element in the iterable that meets
     all the traits passed in ``attrs``. This is an alternative for
-    :func:`~nextcord.utils.find`.
+    :func:`~discord.utils.find`.
 
     When multiple attributes are specified, they are checked using
     logical AND, not logical OR. Meaning they have to meet every
@@ -399,6 +499,14 @@ def get(iterable: Iterable[T], **attrs: Any) -> Optional[T]:
     If nothing is found that matches the attributes passed, then
     ``None`` is returned.
 
+    .. versionchanged:: 2.0
+
+        The ``iterable`` parameter is now positional-only.
+
+    .. versionchanged:: 2.0
+
+        The ``iterable`` parameter supports :term:`asynchronous iterable`\s.
+
     Examples
     ---------
 
@@ -406,47 +514,40 @@ def get(iterable: Iterable[T], **attrs: Any) -> Optional[T]:
 
     .. code-block:: python3
 
-        member = nextcord.utils.get(message.guild.members, name='Foo')
+        member = discord.utils.get(message.guild.members, name='Foo')
 
     Multiple attribute matching:
 
     .. code-block:: python3
 
-        channel = nextcord.utils.get(guild.voice_channels, name='Foo', bitrate=64000)
+        channel = discord.utils.get(guild.voice_channels, name='Foo', bitrate=64000)
 
     Nested attribute matching:
 
     .. code-block:: python3
 
-        channel = nextcord.utils.get(client.get_all_channels(), guild__name='Cool', name='general')
+        channel = discord.utils.get(client.get_all_channels(), guild__name='Cool', name='general')
+
+    Async iterables:
+
+    .. code-block:: python3
+
+        msg = await discord.utils.get(channel.history(), author__name='Dave')
 
     Parameters
     -----------
-    iterable
-        An iterable to search through.
+    iterable: Union[:class:`collections.abc.Iterable`, :class:`collections.abc.AsyncIterable`]
+        The iterable to search through. Using a :class:`collections.abc.AsyncIterable`,
+        makes this function return a :term:`coroutine`.
     \*\*attrs
         Keyword arguments that denote attributes to search with.
     """
 
-    # global -> local
-    _all = all
-    attrget = attrgetter
-
-    # Special case the single element call
-    if len(attrs) == 1:
-        k, v = attrs.popitem()
-        pred = attrget(k.replace('__', '.'))
-        for elem in iterable:
-            if pred(elem) == v:
-                return elem
-        return None
-
-    converted = [(attrget(attr.replace('__', '.')), value) for attr, value in attrs.items()]
-
-    for elem in iterable:
-        if _all(pred(elem) == value for pred, value in converted):
-            return elem
-    return None
+    return (
+        _get(iterable, **attrs)  # type: ignore
+        if hasattr(iterable, '__iter__')  # isinstance(iterable, collections.abc.Iterable) is too slow
+        else _aget(iterable, **attrs)  # type: ignore
+    )
 
 
 def _unique(iterable: Iterable[T]) -> List[T]:
@@ -472,7 +573,7 @@ def _get_mime_type_for_image(data: bytes):
     elif data.startswith(b'RIFF') and data[8:12] == b'WEBP':
         return 'image/webp'
     else:
-        raise InvalidArgument('Unsupported image type given')
+        raise ValueError('Unsupported image type given')
 
 
 def _bytes_to_base64_data(data: bytes) -> str:
@@ -482,9 +583,13 @@ def _bytes_to_base64_data(data: bytes) -> str:
     return fmt.format(mime=mime, data=b64)
 
 
+def _is_submodule(parent: str, child: str) -> bool:
+    return parent == child or child.startswith(parent + '.')
+
+
 if HAS_ORJSON:
 
-    def _to_json(obj: Any) -> str:  # type: ignore
+    def _to_json(obj: Any) -> str:
         return orjson.dumps(obj).decode('utf-8')
 
     _from_json = orjson.loads  # type: ignore
@@ -508,15 +613,15 @@ def _parse_ratelimit_header(request: Any, *, use_clock: bool = False) -> float:
         return float(reset_after)
 
 
-async def maybe_coroutine(f, *args, **kwargs):
+async def maybe_coroutine(f: MaybeAwaitableFunc[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
     value = f(*args, **kwargs)
     if _isawaitable(value):
         return await value
     else:
-        return value
+        return value  # type: ignore
 
 
-async def async_all(gen, *, check=_isawaitable):
+async def async_all(gen: Iterable[Awaitable[T]], *, check: Callable[[T], bool] = _isawaitable) -> bool:
     for elem in gen:
         if check(elem):
             elem = await elem
@@ -525,7 +630,7 @@ async def async_all(gen, *, check=_isawaitable):
     return True
 
 
-async def sane_wait_for(futures, *, timeout):
+async def sane_wait_for(futures: Iterable[Awaitable[T]], *, timeout: Optional[float]) -> Set[asyncio.Task[T]]:
     ensured = [asyncio.ensure_future(fut) for fut in futures]
     done, pending = await asyncio.wait(ensured, timeout=timeout, return_when=asyncio.ALL_COMPLETED)
 
@@ -538,12 +643,12 @@ async def sane_wait_for(futures, *, timeout):
 def get_slots(cls: Type[Any]) -> Iterator[str]:
     for mro in reversed(cls.__mro__):
         try:
-            yield from mro.__slots__
+            yield from mro.__slots__  # type: ignore
         except AttributeError:
             continue
 
 
-def compute_timedelta(dt: datetime.datetime):
+def compute_timedelta(dt: datetime.datetime) -> float:
     if dt.tzinfo is None:
         dt = dt.astimezone()
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -592,7 +697,7 @@ def valid_icon_size(size: int) -> bool:
     return not size & (size - 1) and 4096 >= size >= 16
 
 
-class SnowflakeList(array.array):
+class SnowflakeList(_SnowflakeListBase):
     """Internal data storage class to efficiently store a list of snowflakes.
 
     This should have the following characteristics:
@@ -611,7 +716,7 @@ class SnowflakeList(array.array):
         def __init__(self, data: Iterable[int], *, is_sorted: bool = False):
             ...
 
-    def __new__(cls, data: Iterable[int], *, is_sorted: bool = False):
+    def __new__(cls, data: Iterable[int], *, is_sorted: bool = False) -> Self:
         return array.array.__new__(cls, 'Q', data if is_sorted else sorted(data))  # type: ignore
 
     def add(self, element: int) -> None:
@@ -641,41 +746,54 @@ def _string_width(string: str, *, _IS_ASCII=_IS_ASCII) -> int:
     return sum(2 if func(char) in UNICODE_WIDE_CHAR_TYPE else 1 for char in string)
 
 
-def resolve_invite(invite: Union[Invite, str]) -> str:
-    """
-    Resolves an invite from a :class:`~nextcord.Invite`, URL or code.
+class ResolvedInvite(NamedTuple):
+    code: str
+    event: Optional[int]
+
+
+def resolve_invite(invite: Union[Invite, str]) -> ResolvedInvite:
+    """Resolves an invite from a :class:`~discord.Invite`, URL or code.
+
+    .. versionchanged:: 2.0
+        Now returns a :class:`.ResolvedInvite` instead of a
+        :class:`str`.
 
     Parameters
     -----------
-    invite: Union[:class:`~nextcord.Invite`, :class:`str`]
+    invite: Union[:class:`~discord.Invite`, :class:`str`]
         The invite.
 
     Returns
     --------
-    :class:`str`
-        The invite code.
+    :class:`.ResolvedInvite`
+        A data class containing the invite code and the event ID.
     """
     from .invite import Invite  # circular import
 
     if isinstance(invite, Invite):
-        return invite.code
+        return ResolvedInvite(invite.code, invite.scheduled_event_id)
     else:
-        rx = r'(?:https?\:\/\/)?discord(?:\.gg|(?:app)?\.com\/invite)\/(.+)'
+        rx = r'(?:https?\:\/\/)?discord(?:\.gg|(?:app)?\.com\/invite)\/[^/]+'
         m = re.match(rx, invite)
+
         if m:
-            return m.group(1)
-    return invite
+            url = yarl.URL(invite)
+            code = url.parts[-1]
+            event_id = url.query.get('event')
+
+            return ResolvedInvite(code, int(event_id) if event_id else None)
+    return ResolvedInvite(invite, None)
 
 
 def resolve_template(code: Union[Template, str]) -> str:
     """
-    Resolves a template code from a :class:`~nextcord.Template`, URL or code.
+    Resolves a template code from a :class:`~discord.Template`, URL or code.
 
     .. versionadded:: 1.4
 
     Parameters
     -----------
-    code: Union[:class:`~nextcord.Template`, :class:`str`]
+    code: Union[:class:`~discord.Template`, :class:`str`]
         The code.
 
     Returns
@@ -793,7 +911,7 @@ def escape_mentions(text: str) -> str:
     .. note::
 
         For more granular control over what mentions should be escaped
-        within messages, refer to the :class:`~nextcord.AllowedMentions`
+        within messages, refer to the :class:`~discord.AllowedMentions`
         class.
 
     Parameters
@@ -809,7 +927,7 @@ def escape_mentions(text: str) -> str:
     return re.sub(r'@(everyone|here|[!&]?[0-9]{17,20})', '@\u200b\\1', text)
 
 
-def _chunk(iterator: Iterator[T], max_size: int) -> Iterator[List[T]]:
+def _chunk(iterator: Iterable[T], max_size: int) -> Iterator[List[T]]:
     ret = []
     n = 0
     for item in iterator:
@@ -823,7 +941,7 @@ def _chunk(iterator: Iterator[T], max_size: int) -> Iterator[List[T]]:
         yield ret
 
 
-async def _achunk(iterator: AsyncIterator[T], max_size: int) -> AsyncIterator[List[T]]:
+async def _achunk(iterator: AsyncIterable[T], max_size: int) -> AsyncIterator[List[T]]:
     ret = []
     n = 0
     async for item in iterator:
@@ -838,12 +956,12 @@ async def _achunk(iterator: AsyncIterator[T], max_size: int) -> AsyncIterator[Li
 
 
 @overload
-def as_chunks(iterator: Iterator[T], max_size: int) -> Iterator[List[T]]:
+def as_chunks(iterator: Iterable[T], max_size: int) -> Iterator[List[T]]:
     ...
 
 
 @overload
-def as_chunks(iterator: AsyncIterator[T], max_size: int) -> AsyncIterator[List[T]]:
+def as_chunks(iterator: AsyncIterable[T], max_size: int) -> AsyncIterator[List[T]]:
     ...
 
 
@@ -854,7 +972,7 @@ def as_chunks(iterator: _Iter[T], max_size: int) -> _Iter[List[T]]:
 
     Parameters
     ----------
-    iterator: Union[:class:`collections.abc.Iterator`, :class:`collections.abc.AsyncIterator`]
+    iterator: Union[:class:`collections.abc.Iterable`, :class:`collections.abc.AsyncIterable`]
         The iterator to chunk, can be sync or async.
     max_size: :class:`int`
         The maximum chunk size.
@@ -872,7 +990,7 @@ def as_chunks(iterator: _Iter[T], max_size: int) -> _Iter[List[T]]:
     if max_size <= 0:
         raise ValueError('Chunk sizes must be greater than 0.')
 
-    if isinstance(iterator, AsyncIterator):
+    if isinstance(iterator, AsyncIterable):
         return _achunk(iterator, max_size)
     return _chunk(iterator, max_size)
 
@@ -903,7 +1021,7 @@ def evaluate_annotation(
     cache: Dict[str, Any],
     *,
     implicit_str: bool = True,
-):
+) -> Any:
     if isinstance(tp, ForwardRef):
         tp = tp.__forward_arg__
         # ForwardRefs always evaluate their internals
@@ -912,9 +1030,9 @@ def evaluate_annotation(
     if implicit_str and isinstance(tp, str):
         if tp in cache:
             return cache[tp]
-        evaluated = eval(tp, globals, locals)
+        evaluated = evaluate_annotation(eval(tp, globals, locals), globals, locals, cache)
         cache[tp] = evaluated
-        return evaluate_annotation(evaluated, globals, locals, cache)
+        return evaluated
 
     if hasattr(tp, '__args__'):
         implicit_str = True
@@ -943,9 +1061,6 @@ def evaluate_annotation(
         if is_literal and not all(isinstance(x, (str, int, bool, type(None))) for x in evaluated_args):
             raise TypeError('Literal arguments must be of type str, int, bool, or NoneType.')
 
-        if evaluated_args == args:
-            return tp
-
         try:
             return tp.copy_with(evaluated_args)
         except AttributeError:
@@ -969,6 +1084,21 @@ def resolve_annotation(
     if cache is None:
         cache = {}
     return evaluate_annotation(annotation, globalns, locals, cache)
+
+
+def is_inside_class(func: Callable[..., Any]) -> bool:
+    # For methods defined in a class, the qualname has a dotted path
+    # denoting which class it belongs to. So, e.g. for A.foo the qualname
+    # would be A.foo while a global foo() would just be foo.
+    #
+    # Unfortunately, for nested functions this breaks. So inside an outer
+    # function named outer, those two would end up having a qualname with
+    # outer.<locals>.A.foo and outer.<locals>.foo
+
+    if func.__qualname__ == func.__name__:
+        return False
+    (remaining, _, _) = func.__qualname__.rpartition('.')
+    return not remaining.endswith('<locals>')
 
 
 TimestampStyle = Literal['f', 'F', 'd', 'D', 't', 'T', 'R']

@@ -24,13 +24,18 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 import inspect
-import discord.utils
+import discord
+from discord import app_commands
+from discord.utils import maybe_coroutine
 
-from typing import Any, Callable, ClassVar, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple, TypeVar, Type
+from typing import Any, Callable, Dict, Generator, Iterable, List, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
 
-from ._types import _BaseCommand
+from ._types import _BaseCommand, BotT
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+    from discord.abc import Snowflake
+
     from .bot import BotBase
     from .context import Context
     from .core import Command
@@ -40,7 +45,6 @@ __all__ = (
     'Cog',
 )
 
-CogT = TypeVar('CogT', bound='Cog')
 FuncT = TypeVar('FuncT', bound=Callable[..., Any])
 
 MISSING: Any = discord.utils.MISSING
@@ -105,22 +109,38 @@ class CogMeta(type):
                 async def bar(self, ctx):
                     pass # hidden -> False
     """
+
     __cog_name__: str
     __cog_settings__: Dict[str, Any]
-    __cog_commands__: List[Command]
+    __cog_commands__: List[Command[Any, ..., Any]]
+    __cog_is_app_commands_group__: bool
+    __cog_app_commands__: List[Union[app_commands.Group, app_commands.Command[Any, ..., Any]]]
     __cog_listeners__: List[Tuple[str, str]]
 
-    def __new__(cls: Type[CogMeta], *args: Any, **kwargs: Any) -> CogMeta:
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
         name, bases, attrs = args
-        attrs['__cog_name__'] = kwargs.pop('name', name)
+        attrs['__cog_name__'] = kwargs.get('name', name)
         attrs['__cog_settings__'] = kwargs.pop('command_attrs', {})
+        is_parent = any(issubclass(base, app_commands.Group) for base in bases)
+        attrs['__cog_is_app_commands_group__'] = is_parent
 
-        description = kwargs.pop('description', None)
+        description = kwargs.get('description', None)
         if description is None:
             description = inspect.cleandoc(attrs.get('__doc__', ''))
         attrs['__cog_description__'] = description
 
+        if is_parent:
+            attrs['__discord_app_commands_skip_init_binding__'] = True
+            # This is hacky, but it signals the Group not to process this info.
+            # It's overridden later.
+            attrs['__discord_app_commands_group_children__'] = True
+        else:
+            # Remove the extraneous keyword arguments we're using
+            kwargs.pop('name', None)
+            kwargs.pop('description', None)
+
         commands = {}
+        cog_app_commands = {}
         listeners = {}
         no_bot_cog = 'Commands or listeners must not start with cog_ or bot_ (in method {0.__name__}.{1})'
 
@@ -141,6 +161,8 @@ class CogMeta(type):
                     if elem.startswith(('cog_', 'bot_')):
                         raise TypeError(no_bot_cog.format(base, elem))
                     commands[elem] = value
+                elif isinstance(value, (app_commands.Group, app_commands.Command)) and value.parent is None:
+                    cog_app_commands[elem] = value
                 elif inspect.iscoroutinefunction(value):
                     try:
                         getattr(value, '__cog_listener__')
@@ -151,7 +173,14 @@ class CogMeta(type):
                             raise TypeError(no_bot_cog.format(base, elem))
                         listeners[elem] = value
 
-        new_cls.__cog_commands__ = list(commands.values()) # this will be copied in Cog.__new__
+        new_cls.__cog_commands__ = list(commands.values())  # this will be copied in Cog.__new__
+        new_cls.__cog_app_commands__ = list(cog_app_commands.values())
+
+        if is_parent:
+            # Prefill the app commands for the Group as well..
+            # The type checker doesn't like runtime attribute modification and this one's
+            # optional so it can't be cheesed.
+            new_cls.__discord_app_commands_group_children__ = new_cls.__cog_app_commands__  # type: ignore
 
         listeners_as_list = []
         for listener in listeners.values():
@@ -170,12 +199,13 @@ class CogMeta(type):
     def qualified_name(cls) -> str:
         return cls.__cog_name__
 
+
 def _cog_special_method(func: FuncT) -> FuncT:
     func.__cog_special_method__ = None
     return func
 
 
-class Cog(discord.ClientCog, metaclass=CogMeta):
+class Cog(metaclass=CogMeta):
     """The base class that all cogs must inherit from.
 
     A cog is a collection of commands, listeners, and optional state to
@@ -185,12 +215,14 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
     When inheriting from this class, the options shown in :class:`CogMeta`
     are equally valid here.
     """
-    __cog_name__: ClassVar[str]
-    __cog_settings__: ClassVar[Dict[str, Any]]
-    __cog_commands__: ClassVar[List[Command]]
-    __cog_listeners__: ClassVar[List[Tuple[str, str]]]
 
-    def __new__(cls: Type[CogT], *args: Any, **kwargs: Any) -> CogT:
+    __cog_name__: str
+    __cog_settings__: Dict[str, Any]
+    __cog_commands__: List[Command[Self, ..., Any]]
+    __cog_app_commands__: List[Union[app_commands.Group, app_commands.Command[Self, ..., Any]]]
+    __cog_listeners__: List[Tuple[str, str]]
+
+    def __new__(cls, *args: Any, **kwargs: Any) -> Self:
         # For issue 426, we need to store a copy of the command objects
         # since we modify them to inject `self` to them.
         # To do this, we need to interfere with the Cog creation process.
@@ -201,10 +233,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         # r.e type ignore, type-checker complains about overriding a ClassVar
         self.__cog_commands__ = tuple(c._update_copy(cmd_attrs) for c in cls.__cog_commands__)  # type: ignore
 
-        lookup = {
-            cmd.qualified_name: cmd
-            for cmd in self.__cog_commands__
-        }
+        lookup = {cmd.qualified_name: cmd for cmd in self.__cog_commands__}
 
         # Update the Command instances dynamically as well
         for command in self.__cog_commands__:
@@ -218,9 +247,28 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
                 parent.remove_command(command.name)  # type: ignore
                 parent.add_command(command)  # type: ignore
 
+        # Register the application commands
+        children: List[Union[app_commands.Group, app_commands.Command[Self, ..., Any]]] = []
+        for command in cls.__cog_app_commands__:
+            copy = command._copy_with(
+                # Type checker doesn't understand this type of narrowing.
+                # Not even with TypeGuard somehow.
+                parent=self if cls.__cog_is_app_commands_group__ else None,  # type: ignore
+                binding=self,
+            )
+
+            children.append(copy)
+
+        self.__cog_app_commands__ = children
+        if cls.__cog_is_app_commands_group__:
+            # Dynamic attribute setting
+            self.__discord_app_commands_group_children__ = children  # type: ignore
+            # Enforce this to work even if someone forgets __init__
+            self.module = cls.__module__  # type: ignore
+
         return self
 
-    def get_commands(self) -> List[Command]:
+    def get_commands(self) -> List[Command[Self, ..., Any]]:
         r"""
         Returns
         --------
@@ -248,7 +296,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
     def description(self, description: str) -> None:
         self.__cog_description__ = description
 
-    def walk_commands(self) -> Generator[Command, None, None]:
+    def walk_commands(self) -> Generator[Command[Self, ..., Any], None, None]:
         """An iterator that recursively walks through this cog's commands and subcommands.
 
         Yields
@@ -257,6 +305,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
             A command or group from the cog.
         """
         from .core import GroupMixin
+
         for command in self.__cog_commands__:
             if command.parent is None:
                 yield command
@@ -317,6 +366,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
             # to pick it up but the metaclass unfurls the function and
             # thus the assignments need to be on the actual function
             return func
+
         return decorator
 
     def has_error_handler(self) -> bool:
@@ -327,18 +377,35 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         return not hasattr(self.cog_command_error.__func__, '__cog_special_method__')
 
     @_cog_special_method
-    def cog_unload(self) -> None:
-        """A special method that is called when the cog gets removed.
+    async def cog_load(self) -> None:
+        """|maybecoro|
 
-        This function **cannot** be a coroutine. It must be a regular
-        function.
+        A special method that is called when the cog gets loaded.
 
-        Subclasses must replace this if they want special unloading behaviour.
+        Subclasses must replace this if they want special asynchronous loading behaviour.
+        Note that the ``__init__`` special method does not allow asynchronous code to run
+        inside it, thus this is helpful for setting up code that needs to be asynchronous.
+
+        .. versionadded:: 2.0
         """
         pass
 
     @_cog_special_method
-    def bot_check_once(self, ctx: Context) -> bool:
+    async def cog_unload(self) -> None:
+        """|maybecoro|
+
+        A special method that is called when the cog gets removed.
+
+        Subclasses must replace this if they want special unloading behaviour.
+
+        .. versionchanged:: 2.0
+
+            This method can now be a :term:`coroutine`.
+        """
+        pass
+
+    @_cog_special_method
+    def bot_check_once(self, ctx: Context[BotT]) -> bool:
         """A special method that registers as a :meth:`.Bot.check_once`
         check.
 
@@ -348,7 +415,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         return True
 
     @_cog_special_method
-    def bot_check(self, ctx: Context) -> bool:
+    def bot_check(self, ctx: Context[BotT]) -> bool:
         """A special method that registers as a :meth:`.Bot.check`
         check.
 
@@ -358,8 +425,8 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         return True
 
     @_cog_special_method
-    def cog_check(self, ctx: Context) -> bool:
-        """A special method that registers as a :func:`~nextcord.ext.commands.check`
+    def cog_check(self, ctx: Context[BotT]) -> bool:
+        """A special method that registers as a :func:`~discord.ext.commands.check`
         for every command and subcommand in this cog.
 
         This function **can** be a coroutine and must take a sole parameter,
@@ -368,7 +435,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         return True
 
     @_cog_special_method
-    async def cog_command_error(self, ctx: Context, error: Exception) -> None:
+    async def cog_command_error(self, ctx: Context[BotT], error: Exception) -> None:
         """A special method that is called whenever an error
         is dispatched inside this cog.
 
@@ -387,7 +454,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         pass
 
     @_cog_special_method
-    async def cog_before_invoke(self, ctx: Context) -> None:
+    async def cog_before_invoke(self, ctx: Context[BotT]) -> None:
         """A special method that acts as a cog local pre-invoke hook.
 
         This is similar to :meth:`.Command.before_invoke`.
@@ -402,7 +469,7 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         pass
 
     @_cog_special_method
-    async def cog_after_invoke(self, ctx: Context) -> None:
+    async def cog_after_invoke(self, ctx: Context[BotT]) -> None:
         """A special method that acts as a cog local post-invoke hook.
 
         This is similar to :meth:`.Command.after_invoke`.
@@ -416,8 +483,12 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         """
         pass
 
-    def _inject(self: CogT, bot: BotBase) -> CogT:
+    async def _inject(self, bot: BotBase, override: bool, guild: Optional[Snowflake], guilds: List[Snowflake]) -> Self:
         cls = self.__class__
+
+        # we'll call this first so that errors can propagate without
+        # having to worry about undoing anything
+        await maybe_coroutine(self.cog_load)
 
         # realistically, the only thing that can cause loading errors
         # is essentially just the command loading, which raises if there are
@@ -427,7 +498,8 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
             command.cog = self
             if command.parent is None:
                 try:
-                    bot.add_command(command)
+                    # Type checker does not understand the generic bounds here
+                    bot.add_command(command)  # type: ignore
                 except Exception as e:
                     # undo our additions
                     for to_undo in self.__cog_commands__[:index]:
@@ -449,9 +521,15 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
         for name, method_name in self.__cog_listeners__:
             bot.add_listener(getattr(self, method_name), name)
 
+        # Only do this if these are "top level" commands
+        if not cls.__cog_is_app_commands_group__:
+            for command in self.__cog_app_commands__:
+                # This is already atomic
+                bot.tree.add_command(command, override=override, guild=guild, guilds=guilds)
+
         return self
 
-    def _eject(self, bot: BotBase) -> None:
+    async def _eject(self, bot: BotBase, guild_ids: Optional[Iterable[int]]) -> None:
         cls = self.__class__
 
         try:
@@ -459,8 +537,17 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
                 if command.parent is None:
                     bot.remove_command(command.name)
 
-            for _, method_name in self.__cog_listeners__:
-                bot.remove_listener(getattr(self, method_name))
+            if not cls.__cog_is_app_commands_group__:
+                for command in self.__cog_app_commands__:
+                    guild_ids = guild_ids or command._guild_ids
+                    if guild_ids is None:
+                        bot.tree.remove_command(command.name)
+                    else:
+                        for guild_id in guild_ids:
+                            bot.tree.remove_command(command.name, guild=discord.Object(id=guild_id))
+
+            for name, method_name in self.__cog_listeners__:
+                bot.remove_listener(getattr(self, method_name), name)
 
             if cls.bot_check is not Cog.bot_check:
                 bot.remove_check(self.bot_check)
@@ -469,6 +556,6 @@ class Cog(discord.ClientCog, metaclass=CogMeta):
                 bot.remove_check(self.bot_check_once, call_once=True)
         finally:
             try:
-                self.cog_unload()
+                await maybe_coroutine(self.cog_unload)
             except Exception:
                 pass

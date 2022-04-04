@@ -5,16 +5,15 @@ Discord API Wrapper
 A basic wrapper for the Discord API.
 
 :copyright: (c) 2015-present Rapptz
-:copyright: (c) 2021-present tag-epic
 :license: MIT, see LICENSE for more details.
 
 """
 
-__title__ = 'nextcord'
-__author__ = 'tag-epic & Rapptz'
+__title__ = 'discord'
+__author__ = 'Rapptz'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2015-present Rapptz & tag-epic'
-__version__ = '2.0.0a8'
+__copyright__ = 'Copyright 2015-present Rapptz'
+__version__ = '2.0.0a'
 
 __path__ = __import__('pkgutil').extend_path(__path__, __name__)
 
@@ -44,7 +43,7 @@ from .template import *
 from .widget import *
 from .object import *
 from .reaction import *
-from . import utils, opus, abc, ui
+from . import utils, opus, abc, ui, app_commands
 from .enums import *
 from .embeds import *
 from .mentions import *
@@ -57,12 +56,10 @@ from .raw_models import *
 from .team import *
 from .sticker import *
 from .stage_instance import *
+from .scheduled_event import *
 from .interactions import *
 from .components import *
 from .threads import *
-from .health_check import *
-from .scheduled_events import *
-from .application_command import *
 
 
 class VersionInfo(NamedTuple):
@@ -76,3 +73,5 @@ class VersionInfo(NamedTuple):
 version_info: VersionInfo = VersionInfo(major=2, minor=0, micro=0, releaselevel='alpha', serial=0)
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+del logging, NamedTuple, Literal, VersionInfo

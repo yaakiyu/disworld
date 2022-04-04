@@ -25,27 +25,24 @@ DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple, Union
+from typing import Any, Dict, Optional, TYPE_CHECKING, Sequence, Tuple, Union
 import asyncio
+import datetime
 
 from . import utils
-from .enums import try_enum, InteractionType, InteractionResponseType
-from .errors import (
-    InteractionResponded,
-    HTTPException,
-    ClientException,
-    InvalidArgument
-)
+from .enums import try_enum, Locale, InteractionType, InteractionResponseType
+from .errors import InteractionResponded, HTTPException, ClientException, DiscordException
+from .flags import MessageFlags
 from .channel import PartialMessageable, ChannelType
 
-from .file import File
-from .embeds import Embed
 from .user import User
 from .member import Member
 from .message import Message, Attachment
 from .object import Object
 from .permissions import Permissions
-from .webhook.async_ import async_context, Webhook, handle_message_parameters, WebhookMessage
+from .http import handle_message_parameters
+from .webhook.async_ import async_context, Webhook, interaction_response_params, interaction_message_response_params
+from .app_commands.namespace import Namespace
 
 __all__ = (
     'Interaction',
@@ -57,19 +54,26 @@ if TYPE_CHECKING:
     from .types.interactions import (
         Interaction as InteractionPayload,
         InteractionData,
+        ApplicationCommandInteractionData,
     )
+    from .types.webhook import (
+        Webhook as WebhookPayload,
+    )
+    from .client import Client
     from .guild import Guild
     from .state import ConnectionState
+    from .file import File
     from .mentions import AllowedMentions
     from aiohttp import ClientSession
+    from .embeds import Embed
     from .ui.view import View
-    from .channel import VoiceChannel, StageChannel, TextChannel, CategoryChannel, StoreChannel, PartialMessageable
+    from .app_commands.models import Choice, ChoiceT
+    from .ui.modal import Modal
+    from .channel import VoiceChannel, StageChannel, TextChannel, CategoryChannel
     from .threads import Thread
-    from .client import Client
+    from .app_commands.commands import Command, ContextMenu
 
-    InteractionChannel = Union[
-        VoiceChannel, StageChannel, TextChannel, CategoryChannel, StoreChannel, Thread, PartialMessageable
-    ]
+    InteractionChannel = Union[VoiceChannel, StageChannel, TextChannel, CategoryChannel, Thread, PartialMessageable]
 
 MISSING: Any = utils.MISSING
 
@@ -92,13 +96,9 @@ class Interaction:
         The guild ID the interaction was sent from.
     channel_id: Optional[:class:`int`]
         The channel ID the interaction was sent from.
-    locale: Optional[:class:`str`]
-        The users locale.
-    guild_locale: Optional[:class:`str`]
-        The guilds preferred locale, if invoked in a guild.
     application_id: :class:`int`
         The application ID that the interaction was for.
-    user: Optional[Union[:class:`User`, :class:`Member`]]
+    user: Union[:class:`User`, :class:`Member`]
         The user or member that sent the interaction.
     message: Optional[:class:`Message`]
         The message that sent this interaction.
@@ -107,6 +107,10 @@ class Interaction:
         for 15 minutes.
     data: :class:`dict`
         The raw interaction data.
+    locale: :class:`Locale`
+        The locale of the user invoking the interaction.
+    guild_locale: Optional[:class:`Locale`]
+        The preferred locale of the guild the interaction was sent from, if any.
     """
 
     __slots__: Tuple[str, ...] = (
@@ -118,22 +122,26 @@ class Interaction:
         'application_id',
         'message',
         'user',
-        'locale',
-        'guild_locale',
         'token',
         'version',
+        'locale',
+        'guild_locale',
         '_permissions',
         '_state',
+        '_client',
         '_session',
         '_original_message',
         '_cs_response',
         '_cs_followup',
         '_cs_channel',
+        '_cs_namespace',
+        '_cs_command',
     )
 
     def __init__(self, *, data: InteractionPayload, state: ConnectionState):
         self._state: ConnectionState = state
-        self._session: ClientSession = state.http._HTTPClient__session
+        self._client: Client = state._get_client()
+        self._session: ClientSession = state.http._HTTPClient__session  # type: ignore # Mangled attribute for __session
         self._original_message: Optional[InteractionMessage] = None
         self._from_data(data)
 
@@ -146,38 +154,45 @@ class Interaction:
         self.channel_id: Optional[int] = utils._get_as_snowflake(data, 'channel_id')
         self.guild_id: Optional[int] = utils._get_as_snowflake(data, 'guild_id')
         self.application_id: int = int(data['application_id'])
-        self.locale: Optional[str] = data.get('locale')
-        self.guild_locale: Optional[str] = data.get('guild_locale')
+
+        self.locale: Locale = try_enum(Locale, data.get('locale', 'en-US'))
+        self.guild_locale: Optional[Locale]
+        try:
+            self.guild_locale = try_enum(Locale, data['guild_locale'])
+        except KeyError:
+            self.guild_locale = None
 
         self.message: Optional[Message]
         try:
+            # The channel and message payloads are mismatched yet handled properly at runtime
             self.message = Message(state=self._state, channel=self.channel, data=data['message'])  # type: ignore
         except KeyError:
             self.message = None
 
-        self.user: Optional[Union[User, Member]] = None
+        self.user: Union[User, Member] = MISSING
         self._permissions: int = 0
 
         # TODO: there's a potential data loss here
         if self.guild_id:
             guild = self.guild or Object(id=self.guild_id)
             try:
-                member = data['member']  # type: ignore
+                member = data['member']  # type: ignore # The key is optional and handled
             except KeyError:
                 pass
             else:
+                # The fallback to Object for guild causes a type check error but is explicitly allowed here
                 self.user = Member(state=self._state, guild=guild, data=member)  # type: ignore
-                self._permissions = int(member.get('permissions', 0))
+                self._permissions = self.user._permissions or 0
         else:
             try:
-                self.user = User(state=self._state, data=data['user'])
+                self.user = User(state=self._state, data=data['user'])  # type: ignore # The key is optional and handled
             except KeyError:
                 pass
 
     @property
     def client(self) -> Client:
-        """:class:`Client`: The client that handled the interaction."""
-        return self._state._get_client()
+        """:class:`Client`: The client that is handling this interaction."""
+        return self._client
 
     @property
     def guild(self) -> Optional[Guild]:
@@ -208,6 +223,58 @@ class Interaction:
         """
         return Permissions(self._permissions)
 
+    @utils.cached_slot_property('_cs_namespace')
+    def namespace(self) -> Namespace:
+        """:class:`app_commands.Namespace`: The resolved namespace for this interaction.
+
+        If the interaction is not an application command related interaction or the client does not have a
+        tree attached to it then this returns an empty namespace.
+        """
+        if self.type not in (InteractionType.application_command, InteractionType.autocomplete):
+            return Namespace(self, {}, [])
+
+        tree = self._state._command_tree
+        if tree is None:
+            return Namespace(self, {}, [])
+
+        # The type checker does not understand this narrowing
+        data: ApplicationCommandInteractionData = self.data  # type: ignore
+
+        try:
+            _, options = tree._get_app_command_options(data)
+        except DiscordException:
+            options = []
+
+        return Namespace(self, data.get('resolved', {}), options)
+
+    @utils.cached_slot_property('_cs_command')
+    def command(self) -> Optional[Union[Command[Any, ..., Any], ContextMenu]]:
+        """Optional[Union[:class:`app_commands.Command`, :class:`app_commands.ContextMenu`]]: The command being called from
+        this interaction.
+
+        If the interaction is not an application command related interaction or the command is not found in the client's
+        attached tree then ``None`` is returned.
+        """
+        if self.type not in (InteractionType.application_command, InteractionType.autocomplete):
+            return None
+
+        tree = self._state._command_tree
+        if tree is None:
+            return None
+
+        # The type checker does not understand this narrowing
+        data: ApplicationCommandInteractionData = self.data  # type: ignore
+        cmd_type = data.get('type', 1)
+        if cmd_type == 1:
+            try:
+                command, _ = tree._get_app_command_options(data)
+            except DiscordException:
+                return None
+            else:
+                return command
+        else:
+            return tree._get_context_menu(data)
+
     @utils.cached_slot_property('_cs_response')
     def response(self) -> InteractionResponse:
         """:class:`InteractionResponse`: Returns an object responsible for handling responding to the interaction.
@@ -220,21 +287,36 @@ class Interaction:
     @utils.cached_slot_property('_cs_followup')
     def followup(self) -> Webhook:
         """:class:`Webhook`: Returns the follow up webhook for follow up interactions."""
-        payload = {
+        payload: WebhookPayload = {
             'id': self.application_id,
             'type': 3,
             'token': self.token,
         }
         return Webhook.from_state(data=payload, state=self._state)
 
+    @property
+    def created_at(self) -> datetime.datetime:
+        """:class:`datetime.datetime`: When the interaction was created."""
+        return utils.snowflake_time(self.id)
+
+    @property
+    def expires_at(self) -> datetime.datetime:
+        """:class:`datetime.datetime`: When the interaction expires."""
+        return self.created_at + datetime.timedelta(minutes=15)
+
+    def is_expired(self) -> bool:
+        """:class:`bool`: Returns ``True`` if the interaction is expired."""
+        return utils.utcnow() >= self.expires_at
+
     async def original_message(self) -> InteractionMessage:
         """|coro|
 
         Fetches the original interaction response message associated with the interaction.
 
-        If the interaction response was :meth:`InteractionResponse.send_message` then this would
-        return the message that was sent using that response. Otherwise, this would return
-        the message that triggered the interaction.
+        If the interaction response was a newly created message (i.e. through :meth:`InteractionResponse.send_message`
+        or :meth:`InteractionResponse.defer`, where ``thinking`` is ``True``) then this returns the message that was sent
+        using that response. Otherwise, this returns the message that triggered the interaction (i.e.
+        through a component).
 
         Repeated calls to this will return a cached value.
 
@@ -244,6 +326,8 @@ class Interaction:
             Fetching the original response message failed.
         ClientException
             The channel for the message could not be resolved.
+        NotFound
+            The interaction response message does not exist.
 
         Returns
         --------
@@ -266,6 +350,7 @@ class Interaction:
             session=self._session,
         )
         state = _InteractionMessageState(self, self._state)
+        # The state and channel parameters are mocked here
         message = InteractionMessage(state=state, channel=channel, data=data)  # type: ignore
         self._original_message = message
         return message
@@ -274,10 +359,9 @@ class Interaction:
         self,
         *,
         content: Optional[str] = MISSING,
-        embeds: List[Embed] = MISSING,
+        embeds: Sequence[Embed] = MISSING,
         embed: Optional[Embed] = MISSING,
-        file: File = MISSING,
-        files: List[File] = MISSING,
+        attachments: Sequence[Union[Attachment, File]] = MISSING,
         view: Optional[View] = MISSING,
         allowed_mentions: Optional[AllowedMentions] = None,
     ) -> InteractionMessage:
@@ -300,15 +384,18 @@ class Interaction:
         embed: Optional[:class:`Embed`]
             The embed to edit the message with. ``None`` suppresses the embeds.
             This should not be mixed with the ``embeds`` parameter.
-        file: :class:`File`
-            The file to upload. This cannot be mixed with ``files`` parameter.
-        files: List[:class:`File`]
-            A list of files to send with the content. This cannot be mixed with the
-            ``file`` parameter.
+        attachments: List[Union[:class:`Attachment`, :class:`File`]]
+            A list of attachments to keep in the message as well as new files to upload. If ``[]`` is passed
+            then all attachments are removed.
+
+            .. note::
+
+                New files will always appear after current attachments.
+
         allowed_mentions: :class:`AllowedMentions`
             Controls the mentions being processed in this message.
             See :meth:`.abc.Messageable.send` for more information.
-        view: Optional[:class:`~nextcord.ui.View`]
+        view: Optional[:class:`~discord.ui.View`]
             The updated view to update this message with. If ``None`` is passed then
             the view is removed.
 
@@ -316,10 +403,12 @@ class Interaction:
         -------
         HTTPException
             Editing the message failed.
+        NotFound
+            The interaction response message does not exist.
         Forbidden
             Edited a message that is not yours.
         TypeError
-            You specified both ``embed`` and ``embeds`` or ``file`` and ``files``
+            You specified both ``embed`` and ``embeds``
         ValueError
             The length of ``embeds`` was invalid.
 
@@ -332,8 +421,7 @@ class Interaction:
         previous_mentions: Optional[AllowedMentions] = self._state.allowed_mentions
         params = handle_message_parameters(
             content=content,
-            file=file,
-            files=files,
+            attachments=attachments,
             embed=embed,
             embeds=embeds,
             view=view,
@@ -351,12 +439,13 @@ class Interaction:
         )
 
         # The message channel types should always match
-        message = InteractionMessage(state=self._state, channel=self.channel, data=data)  # type: ignore
+        state = _InteractionMessageState(self, self._state)
+        message = InteractionMessage(state=state, channel=self.channel, data=data)  # type: ignore
         if view and not view.is_finished():
             self._state.store_view(view, message.id)
         return message
 
-    async def delete_original_message(self, *, delay: Optional[float] = None) -> None:
+    async def delete_original_message(self) -> None:
         """|coro|
 
         Deletes the original interaction response message.
@@ -364,117 +453,20 @@ class Interaction:
         This is a lower level interface to :meth:`InteractionMessage.delete` in case
         you do not want to fetch the message and save an HTTP request.
 
-        Parameters
-        -----------
-        delay: Optional[:class:`float`]
-            If provided, the number of seconds to wait before deleting the message.
-            The waiting is done in the background and deletion failures are ignored.
-
         Raises
         -------
         HTTPException
             Deleting the message failed.
+        NotFound
+            The interaction response message does not exist or has already been deleted.
         Forbidden
             Deleted a message that is not yours.
         """
         adapter = async_context.get()
-        delete_func = adapter.delete_original_interaction_response(
+        await adapter.delete_original_interaction_response(
             self.application_id,
             self.token,
             session=self._session,
-        )
-
-        if delay is not None:
-            async def inner_call(delay: float = delay):
-                await asyncio.sleep(delay)
-                try:
-                    await delete_func
-                except HTTPException:
-                    pass
-            asyncio.create_task(inner_call())
-        else:
-            await delete_func
-
-    async def send(
-        self,
-        content: Optional[str] = None,
-        *,
-        embed: Embed = MISSING,
-        embeds: List[Embed] = MISSING,
-        file: File = MISSING,
-        files: List[File] = MISSING,
-        view: View = MISSING,
-        tts: bool = False,
-        ephemeral: bool = False,
-        delete_after: Optional[float] = None,
-        allowed_mentions: Optional[AllowedMentions] = MISSING,
-    ) -> Optional[Union[Message, WebhookMessage]]:
-        """|coro|
-
-        This is a shorthand function for helping in sending messages in
-        response to an interaction. If the response
-        :meth:`InteractionResponse.is_done()` then the message is sent
-        via :attr:`Interaction.followup` instead.
-
-        Returns
-        -------
-        Optional[:class:`Message`, :class:`WebhookMessage`]
-            The :class:`Message` that was sent, a :class:`WebhookMessage` if the
-            interaction has been responded to before.
-        """
-
-        if not self.response.is_done():
-            return await self.response.send_message(
-                content=content,
-                embed=embed,
-                embeds=embeds,
-                file=file,
-                files=files,
-                view=view,
-                tts=tts,
-                ephemeral=ephemeral,
-                delete_after=delete_after,
-                allowed_mentions=allowed_mentions,
-            )
-        return await self.followup.send(
-            content=content,  # type: ignore
-            embed=embed,
-            embeds=embeds,
-            file=file,
-            files=files,
-            view=view,
-            tts=tts,
-            ephemeral=ephemeral,
-            delete_after=delete_after,
-            allowed_mentions=allowed_mentions,
-        )
-
-    async def edit(self, *args, **kwargs) -> Optional[Message]:
-        """|coro|
-
-        This is a shorthand function for helping in editing messages in
-        response to an interaction. If the response
-        :meth:`InteractionResponse.is_done()` then the message is edited
-        via the :attr:`Interaction.message` instead.
-
-        Returns
-        -------
-        Optional[:class:`Message`]
-            Message if the interaction has been responded to and the
-            interaction's message was edited w/o using response. Else ``None``
-
-        Raises
-        ------
-        InvalidArgument
-            :attr:`Interaction.message` was ``None``,
-            this may occur in threads.
-        """
-        if not self.response.is_done():
-            return await self.response.edit_message(*args, **kwargs)
-        if self.message is not None:
-            return await self.message.edit(*args, **kwargs)
-        raise InvalidArgument(
-            "Interaction.message is None, this method is only for views"
         )
 
 
@@ -502,7 +494,7 @@ class InteractionResponse:
         """
         return self._responded
 
-    async def defer(self, *, ephemeral: bool = False, with_message: bool = False) -> None:
+    async def defer(self, *, ephemeral: bool = False, thinking: bool = False) -> None:
         """|coro|
 
         Defers the interaction response.
@@ -510,17 +502,23 @@ class InteractionResponse:
         This is typically used when the interaction is acknowledged
         and a secondary action will be done later.
 
+        This is only supported with the following interaction types:
+
+        - :attr:`InteractionType.application_command`
+        - :attr:`InteractionType.component`
+        - :attr:`InteractionType.modal_submit`
+
         Parameters
         -----------
         ephemeral: :class:`bool`
             Indicates whether the deferred message will eventually be ephemeral.
-            This only applies for interactions of type :attr:`InteractionType.application_command` or when ``with_message`` is True
-        with_message: :class:`bool`
-            Indicates whether the response will be a message with thinking state (bot is thinking...).
-            This is always True for interactions of type :attr:`InteractionType.application_command`.
-            For interactions of type :attr:`InteractionType.component` this defaults to False.
-            
-            .. versionadded:: 2.0
+            This only applies to :attr:`InteractionType.application_command` interactions, or if ``thinking`` is ``True``.
+        thinking: :class:`bool`
+            Indicates whether the deferred type should be :attr:`InteractionResponseType.deferred_channel_message`
+            instead of the default :attr:`InteractionResponseType.deferred_message_update` if both are valid.
+            In UI terms, this is represented as if the bot is thinking of a response. It is your responsibility to
+            eventually send a followup message via :attr:`Interaction.followup` to make this thinking state go away.
+            Application commands (AKA Slash commands) cannot use :attr:`InteractionResponseType.deferred_message_update`.
 
         Raises
         -------
@@ -535,18 +533,23 @@ class InteractionResponse:
         defer_type: int = 0
         data: Optional[Dict[str, Any]] = None
         parent = self._parent
-        if parent.type is InteractionType.application_command or with_message:
+        if parent.type is InteractionType.component or parent.type is InteractionType.modal_submit:
+            defer_type = (
+                InteractionResponseType.deferred_channel_message.value
+                if thinking
+                else InteractionResponseType.deferred_message_update.value
+            )
+            if thinking and ephemeral:
+                data = {'flags': 64}
+        elif parent.type is InteractionType.application_command:
             defer_type = InteractionResponseType.deferred_channel_message.value
             if ephemeral:
                 data = {'flags': 64}
-        elif parent.type is InteractionType.component:
-            defer_type = InteractionResponseType.deferred_message_update.value
 
         if defer_type:
             adapter = async_context.get()
-            await adapter.create_interaction_response(
-                parent.id, parent.token, session=parent._session, type=defer_type, data=data
-            )
+            params = interaction_response_params(type=defer_type, data=data)
+            await adapter.create_interaction_response(parent.id, parent.token, session=parent._session, params=params)
             self._responded = True
 
     async def pong(self) -> None:
@@ -569,65 +572,23 @@ class InteractionResponse:
         parent = self._parent
         if parent.type is InteractionType.ping:
             adapter = async_context.get()
-            await adapter.create_interaction_response(
-                parent.id, parent.token, session=parent._session, type=InteractionResponseType.pong.value
-            )
+            params = interaction_response_params(InteractionResponseType.pong.value)
+            await adapter.create_interaction_response(parent.id, parent.token, session=parent._session, params=params)
             self._responded = True
-
-    async def send_autocomplete(self, choices: Union[dict, list]) -> None:
-        """|coro|
-
-        Responds to this interaction by sending an autocomplete payload.
-
-        Parameters
-        ----------
-        choices: Union[:class:`dict`, :class:`list`]
-            The choices to send the user.
-            If a :class:`dict` is given, each key-value pair is turned into a name-value pair. Name is what Discord
-            shows the user, value is what Discord sends to the bot.
-            If something not a :class:`dict`, such as a :class:`list`, is given, each value is turned into a duplicate
-            name-value pair, where the display name and the value Discord sends back are the same.
-
-        Raises
-        -------
-        HTTPException
-            Sending the message failed.
-        InteractionResponded
-            This interaction has already been responded to before.
-        """
-        if self._responded:
-            raise InteractionResponded(self._parent)
-        if not isinstance(choices, dict):
-            choice_list = [{"name": choice, "value": choice} for choice in choices]
-        else:
-            choice_list = [{"name": key, "value": value} for key, value in choices.items()]
-
-        payload = {"choices": choice_list}
-
-        adapter = async_context.get()
-        await adapter.create_interaction_response(
-            self._parent.id,
-            self._parent.token,
-            session=self._parent._session,
-            type=InteractionResponseType.application_command_autocomplete_result.value,
-            data=payload
-        )
-        self._responded = True
-
 
     async def send_message(
         self,
         content: Optional[Any] = None,
         *,
         embed: Embed = MISSING,
-        embeds: List[Embed] = MISSING,
+        embeds: Sequence[Embed] = MISSING,
         file: File = MISSING,
-        files: List[File] = MISSING,
+        files: Sequence[File] = MISSING,
         view: View = MISSING,
         tts: bool = False,
         ephemeral: bool = False,
-        delete_after: Optional[float] = None,
-        allowed_mentions: Optional[AllowedMentions] = MISSING,
+        allowed_mentions: AllowedMentions = MISSING,
+        suppress_embeds: bool = False,
     ) -> None:
         """|coro|
 
@@ -643,26 +604,25 @@ class InteractionResponse:
         embed: :class:`Embed`
             The rich embed for the content to send. This cannot be mixed with
             ``embeds`` parameter.
-        file: :class:`File`
+        file: :class:`~discord.File`
             The file to upload.
-        files: List[:class:`File`]
-            A list of files to upload. Maximum of 10. This cannot be mixed with
-            the ``file`` parameter.
+        files: List[:class:`~discord.File`]
+            A list of files to upload. Must be a maximum of 10.
         tts: :class:`bool`
             Indicates if the message should be sent using text-to-speech.
-        view: :class:`nextcord.ui.View`
+        view: :class:`discord.ui.View`
             The view to send with the message.
         ephemeral: :class:`bool`
             Indicates if the message should only be visible to the user who started the interaction.
             If a view is sent with an ephemeral message and it has no timeout set then the timeout
             is set to 15 minutes.
-        delete_after: Optional[:class:`float`]
-            If provided, the number of seconds to wait in the background
-            before deleting the message we just sent. If the deletion fails,
-            then it is silently ignored.
-        allowed_mentions: :class:`AllowedMentions`
-            Controls the mentions being processed in this message.
-            See :meth:`.abc.Messageable.send` for more information.
+        allowed_mentions: :class:`~discord.AllowedMentions`
+            Controls the mentions being processed in this message. See :meth:`.abc.Messageable.send` for
+            more information.
+        suppress_embeds: :class:`bool`
+            Whether to suppress embeds for the message. This sends the message without any embeds if set to ``True``.
+
+            .. versionadded:: 2.0
 
         Raises
         -------
@@ -678,61 +638,35 @@ class InteractionResponse:
         if self._responded:
             raise InteractionResponded(self._parent)
 
-        payload: Dict[str, Any] = {
-            'tts': tts,
-        }
-
-        if embed is not MISSING and embeds is not MISSING:
-            raise TypeError('Cannot mix embed and embeds keyword arguments')
-
-        if embed is not MISSING:
-            embeds = [embed]
-
-        if embeds:
-            payload['embeds'] = [e.to_dict() for e in embeds]
-
-        if file is not MISSING and files is not MISSING:
-            raise TypeError('Cannot mix file and files keyword arguments')
-
-        if file is not MISSING:
-            files = [file]
-
-        if files and not all(isinstance(f, File) for f in files):
-            raise TypeError('Files parameter must be a list of type File')
-
-        if content is not None:
-            payload['content'] = str(content)
-
-        if ephemeral:
-            payload['flags'] = 64
-
-        if view is not MISSING:
-            payload['components'] = view.to_components()
-
-        if allowed_mentions is MISSING or allowed_mentions is None:
-            if self._parent._state.allowed_mentions is not None:
-                payload['allowed_mentions'] = self._parent._state.allowed_mentions.to_dict()
+        if ephemeral or suppress_embeds:
+            flags = MessageFlags._from_value(0)
+            flags.ephemeral = ephemeral
+            flags.suppress_embeds = suppress_embeds
         else:
-            if self._parent._state.allowed_mentions is not None:
-                payload['allowed_mentions'] = self._parent._state.allowed_mentions.merge(allowed_mentions).to_dict()
-            else:
-                payload['allowed_mentions'] = allowed_mentions.to_dict()
+            flags = MISSING
 
         parent = self._parent
         adapter = async_context.get()
-        try:
-            await adapter.create_interaction_response(
-                parent.id,
-                parent.token,
-                session=parent._session,
-                type=InteractionResponseType.channel_message.value,
-                data=payload,
-                files=files,
-            )
-        finally:
-            if files:
-                for file in files:
-                    file.close()
+        params = interaction_message_response_params(
+            type=InteractionResponseType.channel_message.value,
+            content=content,
+            tts=tts,
+            embeds=embeds,
+            embed=embed,
+            file=file,
+            files=files,
+            previous_allowed_mentions=parent._state.allowed_mentions,
+            allowed_mentions=allowed_mentions,
+            flags=flags,
+            view=view,
+        )
+
+        await adapter.create_interaction_response(
+            parent.id,
+            parent.token,
+            session=parent._session,
+            params=params,
+        )
 
         if view is not MISSING:
             if ephemeral and view.timeout is None:
@@ -742,25 +676,20 @@ class InteractionResponse:
 
         self._responded = True
 
-        if delete_after is not None:
-            await self._parent.delete_original_message(delay=delete_after)
-
     async def edit_message(
         self,
         *,
         content: Optional[Any] = MISSING,
         embed: Optional[Embed] = MISSING,
-        embeds: List[Embed] = MISSING,
-        file: File = MISSING,
-        files: List[File] = MISSING,
-        attachments: List[Attachment] = MISSING,
+        embeds: Sequence[Embed] = MISSING,
+        attachments: Sequence[Union[Attachment, File]] = MISSING,
         view: Optional[View] = MISSING,
-        delete_after: Optional[float] = None,
+        allowed_mentions: Optional[AllowedMentions] = MISSING,
     ) -> None:
         """|coro|
 
         Responds to this interaction by editing the original message of
-        a component interaction.
+        a component or modal interaction.
 
         Parameters
         -----------
@@ -771,29 +700,27 @@ class InteractionResponse:
         embed: Optional[:class:`Embed`]
             The embed to edit the message with. ``None`` suppresses the embeds.
             This should not be mixed with the ``embeds`` parameter.
-        file: :class:`File`
-            The file to upload.
-        files: List[:class:`File`]
-            A list of files to upload. Maximum of 10. This cannot be mixed with
-            the ``file`` parameter.
-        attachments: List[:class:`Attachment`]
-            A list of attachments to keep in the message. If ``[]`` is passed
+        attachments: List[Union[:class:`Attachment`, :class:`File`]]
+            A list of attachments to keep in the message as well as new files to upload. If ``[]`` is passed
             then all attachments are removed.
-        view: Optional[:class:`~nextcord.ui.View`]
+
+            .. note::
+
+                New files will always appear after current attachments.
+
+        view: Optional[:class:`~discord.ui.View`]
             The updated view to update this message with. If ``None`` is passed then
             the view is removed.
-        delete_after: Optional[:class:`float`]
-            If provided, the number of seconds to wait in the background
-            before deleting the message we just sent. If the deletion fails,
-            then it is silently ignored.
-        
+        allowed_mentions: Optional[:class:`~discord.AllowedMentions`]
+            Controls the mentions being processed in this message. See :meth:`.Message.edit`
+            for more information.
 
         Raises
         -------
         HTTPException
             Editing the message failed.
         TypeError
-            You specified both ``embed`` and ``embeds`` or ``file`` and ``files``.
+            You specified both ``embed`` and ``embeds``.
         InteractionResponded
             This interaction has already been responded to before.
         """
@@ -804,71 +731,111 @@ class InteractionResponse:
         msg = parent.message
         state = parent._state
         message_id = msg.id if msg else None
-        if parent.type is not InteractionType.component:
+        if parent.type not in (InteractionType.component, InteractionType.modal_submit):
             return
 
-        payload = {}
-        if content is not MISSING:
-            if content is None:
-                payload['content'] = None
-            else:
-                payload['content'] = str(content)
-
-        if embed is not MISSING and embeds is not MISSING:
-            raise TypeError('cannot mix both embed and embeds keyword arguments')
-
-        if embed is not MISSING:
-            if embed is None:
-                embeds = []
-            else:
-                embeds = [embed]
-
-        if embeds is not MISSING:
-            payload['embeds'] = [e.to_dict() for e in embeds]
-
-        if file is not MISSING and files is not MISSING:
-            raise TypeError('Cannot mix file and files keyword arguments')
-
-        if file is not MISSING:
-            files = [file]
-
-        if files and not all(isinstance(f, File) for f in files):
-            raise TypeError('Files parameter must be a list of type File')
-
-        if attachments is not MISSING:
-            payload['attachments'] = [a.to_dict() for a in attachments]
-
-        if view is not MISSING:
+        if view is not MISSING and message_id is not None:
             state.prevent_view_updates_for(message_id)
-            if view is None:
-                payload['components'] = []
-            else:
-                payload['components'] = view.to_components()
 
         adapter = async_context.get()
-        try:
-            await adapter.create_interaction_response(
-                parent.id,
-                parent.token,
-                session=parent._session,
-                type=InteractionResponseType.message_update.value,
-                data=payload,
-                files=files,
-            )
-        finally:
-            if files:
-                for file in files:
-                    file.close()
+        params = interaction_message_response_params(
+            type=InteractionResponseType.message_update.value,
+            content=content,
+            embed=embed,
+            embeds=embeds,
+            view=view,
+            attachments=attachments,
+            previous_allowed_mentions=parent._state.allowed_mentions,
+            allowed_mentions=allowed_mentions,
+        )
+
+        await adapter.create_interaction_response(
+            parent.id,
+            parent.token,
+            session=parent._session,
+            params=params,
+        )
 
         if view and not view.is_finished():
             state.store_view(view, message_id)
 
         self._responded = True
 
-        if delete_after is not None:
-            await self._parent.delete_original_message(delay=delete_after)
+    async def send_modal(self, modal: Modal, /) -> None:
+        """|coro|
 
-        
+        Responds to this interaction by sending a modal.
+
+        Parameters
+        -----------
+        modal: :class:`~discord.ui.Modal`
+            The modal to send.
+
+        Raises
+        -------
+        HTTPException
+            Sending the modal failed.
+        InteractionResponded
+            This interaction has already been responded to before.
+        """
+        if self._responded:
+            raise InteractionResponded(self._parent)
+
+        parent = self._parent
+
+        adapter = async_context.get()
+
+        params = interaction_response_params(InteractionResponseType.modal.value, modal.to_dict())
+        await adapter.create_interaction_response(
+            parent.id,
+            parent.token,
+            session=parent._session,
+            params=params,
+        )
+
+        self._parent._state.store_view(modal)
+        self._responded = True
+
+    async def autocomplete(self, choices: Sequence[Choice[ChoiceT]]) -> None:
+        """|coro|
+
+        Responds to this interaction by giving the user the choices they can use.
+
+        Parameters
+        -----------
+        choices: List[:class:`~discord.app_commands.Choice`]
+            The list of new choices as the user is typing.
+
+        Raises
+        -------
+        HTTPException
+            Sending the choices failed.
+        ValueError
+            This interaction cannot respond with autocomplete.
+        InteractionResponded
+            This interaction has already been responded to before.
+        """
+        if self._responded:
+            raise InteractionResponded(self._parent)
+
+        payload: Dict[str, Any] = {
+            'choices': [option.to_dict() for option in choices],
+        }
+
+        parent = self._parent
+        if parent.type is not InteractionType.autocomplete:
+            raise ValueError('cannot respond to this interaction with autocomplete.')
+
+        adapter = async_context.get()
+        params = interaction_response_params(type=InteractionResponseType.autocomplete_result.value, data=payload)
+        await adapter.create_interaction_response(
+            parent.id,
+            parent.token,
+            session=parent._session,
+            params=params,
+        )
+
+        self._responded = True
 
 
 class _InteractionMessageState:
@@ -901,7 +868,7 @@ class InteractionMessage(Message):
     This allows you to edit or delete the message associated with
     the interaction response. To retrieve this object see :meth:`Interaction.original_message`.
 
-    This inherits from :class:`nextcord.Message` with changes to
+    This inherits from :class:`discord.Message` with changes to
     :meth:`edit` and :meth:`delete` to work.
 
     .. versionadded:: 2.0
@@ -913,13 +880,11 @@ class InteractionMessage(Message):
     async def edit(
         self,
         content: Optional[str] = MISSING,
-        embeds: List[Embed] = MISSING,
+        embeds: Sequence[Embed] = MISSING,
         embed: Optional[Embed] = MISSING,
-        file: File = MISSING,
-        files: List[File] = MISSING,
+        attachments: Sequence[Union[Attachment, File]] = MISSING,
         view: Optional[View] = MISSING,
         allowed_mentions: Optional[AllowedMentions] = None,
-        delete_after: Optional[float] = None,
     ) -> InteractionMessage:
         """|coro|
 
@@ -934,21 +899,20 @@ class InteractionMessage(Message):
         embed: Optional[:class:`Embed`]
             The embed to edit the message with. ``None`` suppresses the embeds.
             This should not be mixed with the ``embeds`` parameter.
-        file: :class:`File`
-            The file to upload. This cannot be mixed with ``files`` parameter.
-        files: List[:class:`File`]
-            A list of files to send with the content. This cannot be mixed with the
-            ``file`` parameter.
+        attachments: List[Union[:class:`Attachment`, :class:`File`]]
+            A list of attachments to keep in the message as well as new files to upload. If ``[]`` is passed
+            then all attachments are removed.
+
+            .. note::
+
+                New files will always appear after current attachments.
+
         allowed_mentions: :class:`AllowedMentions`
             Controls the mentions being processed in this message.
             See :meth:`.abc.Messageable.send` for more information.
-        view: Optional[:class:`~nextcord.ui.View`]
+        view: Optional[:class:`~discord.ui.View`]
             The updated view to update this message with. If ``None`` is passed then
             the view is removed.
-        delete_after: Optional[:class:`float`]
-            If provided, the number of seconds to wait in the background
-            before deleting the message we just edited. If the deletion fails,
-            then it is silently ignored.
 
         Raises
         -------
@@ -957,7 +921,7 @@ class InteractionMessage(Message):
         Forbidden
             Edited a message that is not yours.
         TypeError
-            You specified both ``embed`` and ``embeds`` or ``file`` and ``files``
+            You specified both ``embed`` and ``embeds``
         ValueError
             The length of ``embeds`` was invalid.
 
@@ -966,20 +930,66 @@ class InteractionMessage(Message):
         :class:`InteractionMessage`
             The newly edited message.
         """
-        message = await self._state._interaction.edit_original_message(
+        return await self._state._interaction.edit_original_message(
             content=content,
             embeds=embeds,
             embed=embed,
-            file=file,
-            files=files,
+            attachments=attachments,
             view=view,
             allowed_mentions=allowed_mentions,
         )
 
-        if delete_after is not None:
-            await self.delete(delay=delete_after)
+    async def add_files(self, *files: File) -> InteractionMessage:
+        r"""|coro|
 
-        return message
+        Adds new files to the end of the message attachments.
+
+        .. versionadded:: 2.0
+
+        Parameters
+        -----------
+        \*files: :class:`File`
+            New files to add to the message.
+
+        Raises
+        -------
+        HTTPException
+            Editing the message failed.
+        Forbidden
+            Tried to edit a message that isn't yours.
+
+        Returns
+        ---------
+        :class:`InteractionMessage`
+            The newly edited message.
+        """
+        return await self.edit(attachments=[*self.attachments, *files])
+
+    async def remove_attachments(self, *attachments: Attachment) -> InteractionMessage:
+        r"""|coro|
+
+        Removes attachments from the message.
+
+        .. versionadded:: 2.0
+
+        Parameters
+        -----------
+        \*attachments: :class:`Attachment`
+            Attachments to remove from the message.
+
+        Raises
+        -------
+        HTTPException
+            Editing the message failed.
+        Forbidden
+            Tried to edit a message that isn't yours.
+
+        Returns
+        ---------
+        :class:`InteractionMessage`
+            The newly edited message.
+        """
+        return await self.edit(attachments=[a for a in self.attachments if a not in attachments])
 
     async def delete(self, *, delay: Optional[float] = None) -> None:
         """|coro|
@@ -1002,4 +1012,15 @@ class InteractionMessage(Message):
             Deleting the message failed.
         """
 
-        await self._state._interaction.delete_original_message(delay=delay)
+        if delay is not None:
+
+            async def inner_call(delay: float = delay):
+                await asyncio.sleep(delay)
+                try:
+                    await self._state._interaction.delete_original_message()
+                except HTTPException:
+                    pass
+
+            asyncio.create_task(inner_call())
+        else:
+            await self._state._interaction.delete_original_message()

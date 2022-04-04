@@ -26,8 +26,10 @@ from __future__ import annotations
 
 import copy
 import asyncio
+from datetime import datetime
 from typing import (
     Any,
+    AsyncIterator,
     Callable,
     Dict,
     List,
@@ -42,15 +44,16 @@ from typing import (
     runtime_checkable,
 )
 
-from .iterators import HistoryIterator
+from .object import OLDEST_OBJECT, Object
 from .context_managers import Typing
 from .enums import ChannelType
-from .errors import InvalidArgument, ClientException
+from .errors import ClientException
 from .mentions import AllowedMentions
 from .permissions import PermissionOverwrite, Permissions
 from .role import Role
 from .invite import Invite
 from .file import File
+from .http import handle_message_parameters
 from .voice_client import VoiceClient, VoiceProtocol
 from .sticker import GuildSticker, StickerItem
 from . import utils
@@ -67,7 +70,7 @@ __all__ = (
 T = TypeVar('T', bound=VoiceProtocol)
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from typing_extensions import Self
 
     from .client import Client
     from .user import ClientUser
@@ -87,6 +90,9 @@ if TYPE_CHECKING:
         Channel as ChannelPayload,
         GuildChannel as GuildChannelPayload,
         OverwriteType,
+    )
+    from .types.snowflake import (
+        SnowflakeList,
     )
 
     PartialMessageableChannel = Union[TextChannel, Thread, DMChannel, PartialMessageable]
@@ -130,11 +136,11 @@ class User(Snowflake, Protocol):
 
     The following implement this ABC:
 
-    - :class:`~nextcord.User`
-    - :class:`~nextcord.ClientUser`
-    - :class:`~nextcord.Member`
+    - :class:`~discord.User`
+    - :class:`~discord.ClientUser`
+    - :class:`~discord.Member`
 
-    This ABC must also implement :class:`~nextcord.abc.Snowflake`.
+    This ABC must also implement :class:`~discord.abc.Snowflake`.
 
     Attributes
     -----------
@@ -142,8 +148,6 @@ class User(Snowflake, Protocol):
         The user's username.
     discriminator: :class:`str`
         The user's discriminator.
-    avatar: :class:`~nextcord.Asset`
-        The avatar asset the user has.
     bot: :class:`bool`
         If the user is a bot account.
     """
@@ -152,7 +156,6 @@ class User(Snowflake, Protocol):
 
     name: str
     discriminator: str
-    avatar: Asset
     bot: bool
 
     @property
@@ -165,6 +168,11 @@ class User(Snowflake, Protocol):
         """:class:`str`: Returns a string that allows you to mention the given user."""
         raise NotImplementedError
 
+    @property
+    def avatar(self) -> Optional[Asset]:
+        """Optional[:class:`~discord.Asset`]: Returns an Asset that represents the user's avatar, if present."""
+        raise NotImplementedError
+
 
 @runtime_checkable
 class PrivateChannel(Snowflake, Protocol):
@@ -172,14 +180,14 @@ class PrivateChannel(Snowflake, Protocol):
 
     The following implement this ABC:
 
-    - :class:`~nextcord.DMChannel`
-    - :class:`~nextcord.GroupChannel`
+    - :class:`~discord.DMChannel`
+    - :class:`~discord.GroupChannel`
 
-    This ABC must also implement :class:`~nextcord.abc.Snowflake`.
+    This ABC must also implement :class:`~discord.abc.Snowflake`.
 
     Attributes
     -----------
-    me: :class:`~nextcord.ClientUser`
+    me: :class:`~discord.ClientUser`
         The user presenting yourself.
     """
 
@@ -215,26 +223,23 @@ class _Overwrites:
         return self.type == 1
 
 
-GCH = TypeVar('GCH', bound='GuildChannel')
-
-
 class GuildChannel:
     """An ABC that details the common operations on a Discord guild channel.
 
     The following implement this ABC:
 
-    - :class:`~nextcord.TextChannel`
-    - :class:`~nextcord.VoiceChannel`
-    - :class:`~nextcord.CategoryChannel`
-    - :class:`~nextcord.StageChannel`
+    - :class:`~discord.TextChannel`
+    - :class:`~discord.VoiceChannel`
+    - :class:`~discord.CategoryChannel`
+    - :class:`~discord.StageChannel`
 
-    This ABC must also implement :class:`~nextcord.abc.Snowflake`.
+    This ABC must also implement :class:`~discord.abc.Snowflake`.
 
     Attributes
     -----------
     name: :class:`str`
         The channel name.
-    guild: :class:`~nextcord.Guild`
+    guild: :class:`~discord.Guild`
         The guild the channel belongs to.
     position: :class:`int`
         The position in the channel list. This is a number that starts at 0.
@@ -254,7 +259,7 @@ class GuildChannel:
 
     if TYPE_CHECKING:
 
-        def __init__(self, *, state: ConnectionState, guild: Guild, data: Dict[str, Any]):
+        def __init__(self, *, state: ConnectionState, guild: Guild, data: GuildChannelPayload):
             ...
 
     def __str__(self) -> str:
@@ -276,7 +281,7 @@ class GuildChannel:
         reason: Optional[str],
     ) -> None:
         if position < 0:
-            raise InvalidArgument('Channel position cannot be less than 0.')
+            raise ValueError('Channel position cannot be less than 0.')
 
         http = self._state.http
         bucket = self._sorting_bucket
@@ -356,7 +361,7 @@ class GuildChannel:
             perms = []
             for target, perm in overwrites.items():
                 if not isinstance(perm, PermissionOverwrite):
-                    raise InvalidArgument(f'Expected PermissionOverwrite received {perm.__class__.__name__}')
+                    raise TypeError(f'Expected PermissionOverwrite received {perm.__class__.__name__}')
 
                 allow, deny = perm.pair()
                 payload = {
@@ -379,7 +384,7 @@ class GuildChannel:
             pass
         else:
             if not isinstance(ch_type, ChannelType):
-                raise InvalidArgument('type field must be of type ChannelType')
+                raise TypeError('type field must be of type ChannelType')
             options['type'] = ch_type.value
 
         if options:
@@ -412,8 +417,8 @@ class GuildChannel:
 
     @property
     def changed_roles(self) -> List[Role]:
-        """List[:class:`~nextcord.Role`]: Returns a list of roles that have been overridden from
-        their default values in the :attr:`~nextcord.Guild.roles` attribute."""
+        """List[:class:`~discord.Role`]: Returns a list of roles that have been overridden from
+        their default values in the :attr:`~discord.Guild.roles` attribute."""
         ret = []
         g = self.guild
         for overwrite in filter(lambda o: o.is_role(), self._overwrites):
@@ -441,13 +446,13 @@ class GuildChannel:
 
         Parameters
         -----------
-        obj: Union[:class:`~nextcord.Role`, :class:`~nextcord.abc.User`]
+        obj: Union[:class:`~discord.Role`, :class:`~discord.abc.User`]
             The role or user denoting
             whose overwrite to get.
 
         Returns
         ---------
-        :class:`~nextcord.PermissionOverwrite`
+        :class:`~discord.PermissionOverwrite`
             The permission overwrites for this object.
         """
 
@@ -471,12 +476,12 @@ class GuildChannel:
         """Returns all of the channel's overwrites.
 
         This is returned as a dictionary where the key contains the target which
-        can be either a :class:`~nextcord.Role` or a :class:`~nextcord.Member` and the value is the
-        overwrite as a :class:`~nextcord.PermissionOverwrite`.
+        can be either a :class:`~discord.Role` or a :class:`~discord.Member` and the value is the
+        overwrite as a :class:`~discord.PermissionOverwrite`.
 
         Returns
         --------
-        Dict[Union[:class:`~nextcord.Role`, :class:`~nextcord.Member`], :class:`~nextcord.PermissionOverwrite`]
+        Dict[Union[:class:`~discord.Role`, :class:`~discord.Member`], :class:`~discord.PermissionOverwrite`]
             The channel's permission overwrites.
         """
         ret = {}
@@ -494,7 +499,7 @@ class GuildChannel:
             # TODO: There is potential data loss here in the non-chunked
             # case, i.e. target is None because get_member returned nothing.
             # This can be fixed with a slight breaking change to the return type,
-            # i.e. adding nextcord.Object to the list of it
+            # i.e. adding discord.Object to the list of it
             # However, for now this is an acceptable compromise.
             if target is not None:
                 ret[target] = overwrite
@@ -502,11 +507,11 @@ class GuildChannel:
 
     @property
     def category(self) -> Optional[CategoryChannel]:
-        """Optional[:class:`~nextcord.CategoryChannel`]: The category this channel belongs to.
+        """Optional[:class:`~discord.CategoryChannel`]: The category this channel belongs to.
 
         If there is no category then this is ``None``.
         """
-        return self.guild.get_channel(self.category_id)  # type: ignore
+        return self.guild.get_channel(self.category_id)  # type: ignore # These are coerced into CategoryChannel
 
     @property
     def permissions_synced(self) -> bool:
@@ -524,8 +529,8 @@ class GuildChannel:
         return bool(category and category.overwrites == self.overwrites)
 
     def permissions_for(self, obj: Union[Member, Role], /) -> Permissions:
-        """Handles permission resolution for the :class:`~nextcord.Member`
-        or :class:`~nextcord.Role`.
+        """Handles permission resolution for the :class:`~discord.Member`
+        or :class:`~discord.Role`.
 
         This function takes into consideration the following cases:
 
@@ -533,8 +538,9 @@ class GuildChannel:
         - Guild roles
         - Channel overrides
         - Member overrides
+        - Member timeout
 
-        If a :class:`~nextcord.Role` is passed, then it checks the permissions
+        If a :class:`~discord.Role` is passed, then it checks the permissions
         someone with that role would have, which is essentially:
 
         - The default role permissions
@@ -545,16 +551,19 @@ class GuildChannel:
         .. versionchanged:: 2.0
             The object passed in can now be a role object.
 
+        .. versionchanged:: 2.0
+            ``obj`` parameter is now positional-only.
+
         Parameters
         ----------
-        obj: Union[:class:`~nextcord.Member`, :class:`~nextcord.Role`]
+        obj: Union[:class:`~discord.Member`, :class:`~discord.Role`]
             The object to resolve permissions for. This could be either
             a member or a role. If it's a role then member overwrites
             are not computed.
 
         Returns
         -------
-        :class:`~nextcord.Permissions`
+        :class:`~discord.Permissions`
             The resolved permissions for the member or role.
         """
 
@@ -616,6 +625,12 @@ class GuildChannel:
         if base.administrator:
             return Permissions.all()
 
+        if obj.is_timed_out():
+            # Timeout leads to every permission except VIEW_CHANNEL and READ_MESSAGE_HISTORY
+            # being explicitly denied
+            base.value &= Permissions._timeout_mask()
+            return base
+
         # Apply @everyone allow/deny first since it's special
         try:
             maybe_everyone = self._overwrites[0]
@@ -664,7 +679,7 @@ class GuildChannel:
 
         Deletes the channel.
 
-        You must have :attr:`~nextcord.Permissions.manage_channels` permission to use this.
+        You must have :attr:`~discord.Permissions.manage_channels` permission to use this.
 
         Parameters
         -----------
@@ -674,11 +689,11 @@ class GuildChannel:
 
         Raises
         -------
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have proper permissions to delete the channel.
-        ~nextcord.NotFound
+        ~discord.NotFound
             The channel was not found or was already deleted.
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Deleting the channel failed.
         """
         await self._state.http.delete_channel(self.id, reason=reason)
@@ -703,25 +718,32 @@ class GuildChannel:
     ) -> None:
         ...
 
-    async def set_permissions(self, target, *, overwrite=_undefined, reason=None, **permissions):
+    async def set_permissions(
+        self,
+        target: Union[Member, Role],
+        *,
+        overwrite: Any = _undefined,
+        reason: Optional[str] = None,
+        **permissions: bool,
+    ) -> None:
         r"""|coro|
 
         Sets the channel specific permission overwrites for a target in the
         channel.
 
-        The ``target`` parameter should either be a :class:`~nextcord.Member` or a
-        :class:`~nextcord.Role` that belongs to guild.
+        The ``target`` parameter should either be a :class:`~discord.Member` or a
+        :class:`~discord.Role` that belongs to guild.
 
         The ``overwrite`` parameter, if given, must either be ``None`` or
-        :class:`~nextcord.PermissionOverwrite`. For convenience, you can pass in
-        keyword arguments denoting :class:`~nextcord.Permissions` attributes. If this is
+        :class:`~discord.PermissionOverwrite`. For convenience, you can pass in
+        keyword arguments denoting :class:`~discord.Permissions` attributes. If this is
         done, then you cannot mix the keyword arguments with the ``overwrite``
         parameter.
 
         If the ``overwrite`` parameter is ``None``, then the permission
         overwrites are deleted.
 
-        You must have the :attr:`~nextcord.Permissions.manage_roles` permission to use this.
+        You must have the :attr:`~discord.Permissions.manage_roles` permission to use this.
 
         .. note::
 
@@ -739,18 +761,23 @@ class GuildChannel:
 
             await channel.set_permissions(member, overwrite=None)
 
-        Using :class:`~nextcord.PermissionOverwrite` ::
+        Using :class:`~discord.PermissionOverwrite` ::
 
-            overwrite = nextcord.PermissionOverwrite()
+            overwrite = discord.PermissionOverwrite()
             overwrite.send_messages = False
             overwrite.read_messages = True
             await channel.set_permissions(member, overwrite=overwrite)
 
+        .. versionchanged:: 2.0
+            This function will now raise :exc:`TypeError` instead of
+            ``InvalidArgument``.
+
+
         Parameters
         -----------
-        target: Union[:class:`~nextcord.Member`, :class:`~nextcord.Role`]
+        target: Union[:class:`~discord.Member`, :class:`~discord.Role`]
             The member or role to overwrite permissions for.
-        overwrite: Optional[:class:`~nextcord.PermissionOverwrite`]
+        overwrite: Optional[:class:`~discord.PermissionOverwrite`]
             The permissions to allow and deny to the target, or ``None`` to
             delete the overwrite.
         \*\*permissions
@@ -761,15 +788,18 @@ class GuildChannel:
 
         Raises
         -------
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have permissions to edit channel specific permissions.
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Editing channel specific permissions failed.
-        ~nextcord.NotFound
+        ~discord.NotFound
             The role or member being edited is not part of the guild.
-        ~nextcord.InvalidArgument
-            The overwrite parameter invalid or the target type was not
-            :class:`~nextcord.Role` or :class:`~nextcord.Member`.
+        TypeError
+            The ``overwrite`` parameter was invalid or the target type was not
+            :class:`~discord.Role` or :class:`~discord.Member`.
+        ValueError
+            The ``overwrite`` parameter and ``positions`` parameters were both
+            unset.
         """
 
         http = self._state.http
@@ -779,18 +809,18 @@ class GuildChannel:
         elif isinstance(target, Role):
             perm_type = _Overwrites.ROLE
         else:
-            raise InvalidArgument('target parameter must be either Member or Role')
+            raise ValueError('target parameter must be either Member or Role')
 
         if overwrite is _undefined:
             if len(permissions) == 0:
-                raise InvalidArgument('No overwrite provided.')
+                raise ValueError('No overwrite provided.')
             try:
                 overwrite = PermissionOverwrite(**permissions)
             except (ValueError, TypeError):
-                raise InvalidArgument('Invalid permissions given to keyword arguments.')
+                raise TypeError('Invalid permissions given to keyword arguments.')
         else:
             if len(permissions) > 0:
-                raise InvalidArgument('Cannot mix overwrite and keyword arguments.')
+                raise TypeError('Cannot mix overwrite and keyword arguments.')
 
         # TODO: wait for event
 
@@ -798,17 +828,19 @@ class GuildChannel:
             await http.delete_channel_permissions(self.id, target.id, reason=reason)
         elif isinstance(overwrite, PermissionOverwrite):
             (allow, deny) = overwrite.pair()
-            await http.edit_channel_permissions(self.id, target.id, allow.value, deny.value, perm_type, reason=reason)
+            await http.edit_channel_permissions(
+                self.id, target.id, str(allow.value), str(deny.value), perm_type, reason=reason
+            )
         else:
-            raise InvalidArgument('Invalid overwrite type provided.')
+            raise TypeError('Invalid overwrite type provided.')
 
     async def _clone_impl(
-        self: GCH,
+        self,
         base_attrs: Dict[str, Any],
         *,
         name: Optional[str] = None,
         reason: Optional[str] = None,
-    ) -> GCH:
+    ) -> Self:
         base_attrs['permission_overwrites'] = [x._asdict() for x in self._overwrites]
         base_attrs['parent_id'] = self.category_id
         base_attrs['name'] = name or self.name
@@ -818,16 +850,16 @@ class GuildChannel:
         obj = cls(state=self._state, guild=self.guild, data=data)
 
         # temporarily add it to the cache
-        self.guild._channels[obj.id] = obj  # type: ignore
+        self.guild._channels[obj.id] = obj  # type: ignore # obj is a GuildChannel
         return obj
 
-    async def clone(self: GCH, *, name: Optional[str] = None, reason: Optional[str] = None) -> GCH:
+    async def clone(self, *, name: Optional[str] = None, reason: Optional[str] = None) -> Self:
         """|coro|
 
         Clones this channel. This creates a channel with the same properties
         as this channel.
 
-        You must have the :attr:`~nextcord.Permissions.manage_channels` permission to
+        You must have the :attr:`~discord.Permissions.manage_channels` permission to
         do this.
 
         .. versionadded:: 1.1
@@ -842,9 +874,9 @@ class GuildChannel:
 
         Raises
         -------
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have the proper permissions to create this channel.
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Creating the channel failed.
 
         Returns
@@ -902,14 +934,14 @@ class GuildChannel:
     ) -> None:
         ...
 
-    async def move(self, **kwargs) -> None:
+    async def move(self, **kwargs: Any) -> None:
         """|coro|
 
         A rich interface to help move a channel relative to other channels.
 
         If exact position movement is required, ``edit`` should be used instead.
 
-        You must have the :attr:`~nextcord.Permissions.manage_channels` permission to
+        You must have the :attr:`~discord.Permissions.manage_channels` permission to
         do this.
 
         .. note::
@@ -918,6 +950,10 @@ class GuildChannel:
             This is a Discord limitation.
 
         .. versionadded:: 1.7
+
+        .. versionchanged:: 2.0
+            This function will now raise :exc:`TypeError` or
+            :exc:`ValueError` instead of ``InvalidArgument``.
 
         Parameters
         ------------
@@ -929,10 +965,10 @@ class GuildChannel:
             Whether to move the channel to the end of the
             channel list (or category if given).
             This is mutually exclusive with ``beginning``, ``before``, and ``after``.
-        before: :class:`~nextcord.abc.Snowflake`
+        before: :class:`~discord.abc.Snowflake`
             The channel that should be before our current channel.
             This is mutually exclusive with ``beginning``, ``end``, and ``after``.
-        after: :class:`~nextcord.abc.Snowflake`
+        after: :class:`~discord.abc.Snowflake`
             The channel that should be after our current channel.
             This is mutually exclusive with ``beginning``, ``end``, and ``before``.
         offset: :class:`int`
@@ -942,7 +978,7 @@ class GuildChannel:
             while a negative number moves it above. Note that this
             number is relative and computed after the ``beginning``,
             ``end``, ``before``, and ``after`` parameters.
-        category: Optional[:class:`~nextcord.abc.Snowflake`]
+        category: Optional[:class:`~discord.abc.Snowflake`]
             The category to move this channel under.
             If ``None`` is given then it moves it out of the category.
             This parameter is ignored if moving a category channel.
@@ -953,8 +989,10 @@ class GuildChannel:
 
         Raises
         -------
-        InvalidArgument
-            An invalid position was given or a bad mix of arguments were passed.
+        ValueError
+            An invalid position was given.
+        TypeError
+            A bad mix of arguments were passed.
         Forbidden
             You do not have permissions to move the channel.
         HTTPException
@@ -968,7 +1006,7 @@ class GuildChannel:
         before, after = kwargs.get('before'), kwargs.get('after')
         offset = kwargs.get('offset', 0)
         if sum(bool(a) for a in (beginning, end, before, after)) > 1:
-            raise InvalidArgument('Only one of [before, after, end, beginning] can be used.')
+            raise TypeError('Only one of [before, after, end, beginning] can be used.')
 
         bucket = self._sorting_bucket
         parent_id = kwargs.get('category', MISSING)
@@ -1011,7 +1049,7 @@ class GuildChannel:
             index = next((i + 1 for i, c in enumerate(channels) if c.id == after.id), None)
 
         if index is None:
-            raise InvalidArgument('Could not resolve appropriate move position')
+            raise ValueError('Could not resolve appropriate move position')
 
         channels.insert(max((index + offset), 0), self)
         payload = []
@@ -1041,7 +1079,7 @@ class GuildChannel:
 
         Creates an instant invite from a text or voice channel.
 
-        You must have the :attr:`~nextcord.Permissions.create_instant_invite` permission to
+        You must have the :attr:`~discord.Permissions.create_instant_invite` permission to
         do this.
 
         Parameters
@@ -1078,15 +1116,15 @@ class GuildChannel:
 
         Raises
         -------
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Invite creation failed.
 
-        ~nextcord.NotFound
+        ~discord.NotFound
             The channel that was passed is a category or an invalid channel.
 
         Returns
         --------
-        :class:`~nextcord.Invite`
+        :class:`~discord.Invite`
             The invite that was created.
         """
 
@@ -1108,18 +1146,18 @@ class GuildChannel:
 
         Returns a list of all active instant invites from this channel.
 
-        You must have :attr:`~nextcord.Permissions.manage_channels` to get this information.
+        You must have :attr:`~discord.Permissions.manage_channels` to get this information.
 
         Raises
         -------
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have proper permissions to get the information.
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             An error occurred while fetching the information.
 
         Returns
         -------
-        List[:class:`~nextcord.Invite`]
+        List[:class:`~discord.Invite`]
             The list of invites that are currently active.
         """
 
@@ -1134,13 +1172,13 @@ class Messageable:
 
     The following implement this ABC:
 
-    - :class:`~nextcord.TextChannel`
-    - :class:`~nextcord.DMChannel`
-    - :class:`~nextcord.GroupChannel`
-    - :class:`~nextcord.User`
-    - :class:`~nextcord.Member`
-    - :class:`~nextcord.ext.commands.Context`
-    - :class:`~nextcord.Thread`
+    - :class:`~discord.TextChannel`
+    - :class:`~discord.DMChannel`
+    - :class:`~discord.GroupChannel`
+    - :class:`~discord.User`
+    - :class:`~discord.Member`
+    - :class:`~discord.ext.commands.Context`
+    - :class:`~discord.Thread`
     """
 
     __slots__ = ()
@@ -1164,6 +1202,7 @@ class Messageable:
         reference: Union[Message, MessageReference, PartialMessage] = ...,
         mention_author: bool = ...,
         view: View = ...,
+        suppress_embeds: bool = ...,
     ) -> Message:
         ...
 
@@ -1174,7 +1213,7 @@ class Messageable:
         *,
         tts: bool = ...,
         embed: Embed = ...,
-        files: List[File] = ...,
+        files: Sequence[File] = ...,
         stickers: Sequence[Union[GuildSticker, StickerItem]] = ...,
         delete_after: float = ...,
         nonce: Union[str, int] = ...,
@@ -1182,6 +1221,7 @@ class Messageable:
         reference: Union[Message, MessageReference, PartialMessage] = ...,
         mention_author: bool = ...,
         view: View = ...,
+        suppress_embeds: bool = ...,
     ) -> Message:
         ...
 
@@ -1191,7 +1231,7 @@ class Messageable:
         content: Optional[str] = ...,
         *,
         tts: bool = ...,
-        embeds: List[Embed] = ...,
+        embeds: Sequence[Embed] = ...,
         file: File = ...,
         stickers: Sequence[Union[GuildSticker, StickerItem]] = ...,
         delete_after: float = ...,
@@ -1200,6 +1240,7 @@ class Messageable:
         reference: Union[Message, MessageReference, PartialMessage] = ...,
         mention_author: bool = ...,
         view: View = ...,
+        suppress_embeds: bool = ...,
     ) -> Message:
         ...
 
@@ -1209,8 +1250,8 @@ class Messageable:
         content: Optional[str] = ...,
         *,
         tts: bool = ...,
-        embeds: List[Embed] = ...,
-        files: List[File] = ...,
+        embeds: Sequence[Embed] = ...,
+        files: Sequence[File] = ...,
         stickers: Sequence[Union[GuildSticker, StickerItem]] = ...,
         delete_after: float = ...,
         nonce: Union[str, int] = ...,
@@ -1218,26 +1259,28 @@ class Messageable:
         reference: Union[Message, MessageReference, PartialMessage] = ...,
         mention_author: bool = ...,
         view: View = ...,
+        suppress_embeds: bool = ...,
     ) -> Message:
         ...
 
     async def send(
         self,
-        content=None,
+        content: Optional[str] = None,
         *,
-        tts=None,
-        embed=None,
-        embeds=None,
-        file=None,
-        files=None,
-        stickers=None,
-        delete_after=None,
-        nonce=None,
-        allowed_mentions=None,
-        reference=None,
-        mention_author=None,
-        view=None,
-    ):
+        tts: bool = False,
+        embed: Optional[Embed] = None,
+        embeds: Optional[Sequence[Embed]] = None,
+        file: Optional[File] = None,
+        files: Optional[Sequence[File]] = None,
+        stickers: Optional[Sequence[Union[GuildSticker, StickerItem]]] = None,
+        delete_after: Optional[float] = None,
+        nonce: Optional[Union[str, int]] = None,
+        allowed_mentions: Optional[AllowedMentions] = None,
+        reference: Optional[Union[Message, MessageReference, PartialMessage]] = None,
+        mention_author: Optional[bool] = None,
+        view: Optional[View] = None,
+        suppress_embeds: bool = False,
+    ) -> Message:
         """|coro|
 
         Sends a message to the destination with the content given.
@@ -1247,14 +1290,18 @@ class Messageable:
         be provided.
 
         To upload a single file, the ``file`` parameter should be used with a
-        single :class:`~nextcord.File` object. To upload multiple files, the ``files``
-        parameter should be used with a :class:`list` of :class:`~nextcord.File` objects.
+        single :class:`~discord.File` object. To upload multiple files, the ``files``
+        parameter should be used with a :class:`list` of :class:`~discord.File` objects.
         **Specifying both parameters will lead to an exception**.
 
         To upload a single embed, the ``embed`` parameter should be used with a
-        single :class:`~nextcord.Embed` object. To upload multiple embeds, the ``embeds``
-        parameter should be used with a :class:`list` of :class:`~nextcord.Embed` objects.
+        single :class:`~discord.Embed` object. To upload multiple embeds, the ``embeds``
+        parameter should be used with a :class:`list` of :class:`~discord.Embed` objects.
         **Specifying both parameters will lead to an exception**.
+
+        .. versionchanged:: 2.0
+            This function will now raise :exc:`TypeError` or
+            :exc:`ValueError` instead of ``InvalidArgument``.
 
         Parameters
         ------------
@@ -1262,11 +1309,11 @@ class Messageable:
             The content of the message to send.
         tts: :class:`bool`
             Indicates if the message should be sent using text-to-speech.
-        embed: :class:`~nextcord.Embed`
+        embed: :class:`~discord.Embed`
             The rich embed for the content.
-        file: :class:`~nextcord.File`
+        file: :class:`~discord.File`
             The file to upload.
-        files: List[:class:`~nextcord.File`]
+        files: List[:class:`~discord.File`]
             A list of files to upload. Must be a maximum of 10.
         nonce: :class:`int`
             The nonce to use for sending this message. If the message was successfully sent,
@@ -1275,158 +1322,108 @@ class Messageable:
             If provided, the number of seconds to wait in the background
             before deleting the message we just sent. If the deletion fails,
             then it is silently ignored.
-        allowed_mentions: :class:`~nextcord.AllowedMentions`
+        allowed_mentions: :class:`~discord.AllowedMentions`
             Controls the mentions being processed in this message. If this is
-            passed, then the object is merged with :attr:`~nextcord.Client.allowed_mentions`.
+            passed, then the object is merged with :attr:`~discord.Client.allowed_mentions`.
             The merging behaviour only overrides attributes that have been explicitly passed
-            to the object, otherwise it uses the attributes set in :attr:`~nextcord.Client.allowed_mentions`.
-            If no object is passed at all then the defaults given by :attr:`~nextcord.Client.allowed_mentions`
+            to the object, otherwise it uses the attributes set in :attr:`~discord.Client.allowed_mentions`.
+            If no object is passed at all then the defaults given by :attr:`~discord.Client.allowed_mentions`
             are used instead.
 
             .. versionadded:: 1.4
 
-        reference: Union[:class:`~nextcord.Message`, :class:`~nextcord.MessageReference`, :class:`~nextcord.PartialMessage`]
-            A reference to the :class:`~nextcord.Message` to which you are replying, this can be created using
-            :meth:`~nextcord.Message.to_reference` or passed directly as a :class:`~nextcord.Message`. You can control
-            whether this mentions the author of the referenced message using the :attr:`~nextcord.AllowedMentions.replied_user`
+        reference: Union[:class:`~discord.Message`, :class:`~discord.MessageReference`, :class:`~discord.PartialMessage`]
+            A reference to the :class:`~discord.Message` to which you are replying, this can be created using
+            :meth:`~discord.Message.to_reference` or passed directly as a :class:`~discord.Message`. You can control
+            whether this mentions the author of the referenced message using the :attr:`~discord.AllowedMentions.replied_user`
             attribute of ``allowed_mentions`` or by setting ``mention_author``.
 
             .. versionadded:: 1.6
 
         mention_author: Optional[:class:`bool`]
-            If set, overrides the :attr:`~nextcord.AllowedMentions.replied_user` attribute of ``allowed_mentions``.
+            If set, overrides the :attr:`~discord.AllowedMentions.replied_user` attribute of ``allowed_mentions``.
 
             .. versionadded:: 1.6
-        view: :class:`nextcord.ui.View`
+        view: :class:`discord.ui.View`
             A Discord UI View to add to the message.
-        embeds: List[:class:`~nextcord.Embed`]
+        embeds: List[:class:`~discord.Embed`]
             A list of embeds to upload. Must be a maximum of 10.
 
             .. versionadded:: 2.0
-        stickers: Sequence[Union[:class:`~nextcord.GuildSticker`, :class:`~nextcord.StickerItem`]]
+        stickers: Sequence[Union[:class:`~discord.GuildSticker`, :class:`~discord.StickerItem`]]
             A list of stickers to upload. Must be a maximum of 3.
+
+            .. versionadded:: 2.0
+        suppress_embeds: :class:`bool`
+            Whether to suppress embeds for the message. This sends the message without any embeds if set to ``True``.
 
             .. versionadded:: 2.0
 
         Raises
         --------
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Sending the message failed.
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have the proper permissions to send the message.
-        ~nextcord.InvalidArgument
-            The ``files`` list is not of the appropriate size,
-            you specified both ``file`` and ``files``,
+        ValueError
+            The ``files`` list is not of the appropriate size.
+        TypeError
+            You specified both ``file`` and ``files``,
             or you specified both ``embed`` and ``embeds``,
-            or the ``reference`` object is not a :class:`~nextcord.Message`,
-            :class:`~nextcord.MessageReference` or :class:`~nextcord.PartialMessage`.
+            or the ``reference`` object is not a :class:`~discord.Message`,
+            :class:`~discord.MessageReference` or :class:`~discord.PartialMessage`.
 
         Returns
         ---------
-        :class:`~nextcord.Message`
+        :class:`~discord.Message`
             The message that was sent.
         """
 
         channel = await self._get_channel()
         state = self._state
         content = str(content) if content is not None else None
-
-        if embed is not None and embeds is not None:
-            raise InvalidArgument('cannot pass both embed and embeds parameter to send()')
-
-        if embed is not None:
-            embed = embed.to_dict()
-
-        elif embeds is not None:
-            embeds = [embed.to_dict() for embed in embeds]
+        previous_allowed_mention = state.allowed_mentions
 
         if stickers is not None:
-            stickers = [sticker.id for sticker in stickers]
-
-        if allowed_mentions is not None:
-            if state.allowed_mentions is not None:
-                allowed_mentions = state.allowed_mentions.merge(allowed_mentions).to_dict()
-            else:
-                allowed_mentions = allowed_mentions.to_dict()
+            sticker_ids: SnowflakeList = [sticker.id for sticker in stickers]
         else:
-            allowed_mentions = state.allowed_mentions and state.allowed_mentions.to_dict()
-
-        if mention_author is not None:
-            allowed_mentions = allowed_mentions or AllowedMentions().to_dict()
-            allowed_mentions['replied_user'] = bool(mention_author)
+            sticker_ids = MISSING
 
         if reference is not None:
             try:
-                reference = reference.to_message_reference_dict()
+                reference_dict = reference.to_message_reference_dict()
             except AttributeError:
-                raise InvalidArgument('reference parameter must be Message, MessageReference, or PartialMessage') from None
-
-        if view:
-            if not hasattr(view, '__discord_ui_view__'):
-                raise InvalidArgument(f'view parameter must be View not {view.__class__!r}')
-
-            components = view.to_components()
+                raise TypeError('reference parameter must be Message, MessageReference, or PartialMessage') from None
         else:
-            components = None
+            reference_dict = MISSING
 
-        if file is not None and files is not None:
-            raise InvalidArgument('cannot pass both file and files parameter to send()')
+        if view and not hasattr(view, '__discord_ui_view__'):
+            raise TypeError(f'view parameter must be View not {view.__class__!r}')
 
-        if file is not None:
-            if not isinstance(file, File):
-                raise InvalidArgument('file parameter must be File')
+        if suppress_embeds:
+            from .message import MessageFlags  # circular import
 
-            try:
-                data = await state.http.send_files(
-                    channel.id,
-                    files=[file],
-                    allowed_mentions=allowed_mentions,
-                    content=content,
-                    tts=tts,
-                    embed=embed,
-                    embeds=embeds,
-                    nonce=nonce,
-                    message_reference=reference,
-                    stickers=stickers,
-                    components=components,
-                )
-            finally:
-                file.close()
-
-        elif files is not None:
-            if not all(isinstance(file, File) for file in files):
-                raise TypeError('Files parameter must be a list of type File')
-
-            try:
-                data = await state.http.send_files(
-                    channel.id,
-                    files=files,
-                    content=content,
-                    tts=tts,
-                    embed=embed,
-                    embeds=embeds,
-                    nonce=nonce,
-                    allowed_mentions=allowed_mentions,
-                    message_reference=reference,
-                    stickers=stickers,
-                    components=components,
-                )
-            finally:
-                for f in files:
-                    f.close()
+            flags = MessageFlags._from_value(4)
         else:
-            data = await state.http.send_message(
-                channel.id,
-                content,
-                tts=tts,
-                embed=embed,
-                embeds=embeds,
-                nonce=nonce,
-                allowed_mentions=allowed_mentions,
-                message_reference=reference,
-                stickers=stickers,
-                components=components,
-            )
+            flags = MISSING
+
+        with handle_message_parameters(
+            content=content,
+            tts=tts,
+            file=file if file is not None else MISSING,
+            files=files if files is not None else MISSING,
+            embed=embed if embed is not None else MISSING,
+            embeds=embeds if embeds is not None else MISSING,
+            nonce=nonce,
+            allowed_mentions=allowed_mentions,
+            message_reference=reference_dict,
+            previous_allowed_mentions=previous_allowed_mention,
+            mention_author=mention_author,
+            stickers=sticker_ids,
+            view=view,
+            flags=flags,
+        ) as params:
+            data = await state.http.send_message(channel.id, params=params)
 
         ret = state.create_message(channel=channel, data=data)
         if view:
@@ -1448,14 +1445,9 @@ class Messageable:
         await self._state.http.send_typing(channel.id)
 
     def typing(self) -> Typing:
-        """Returns a context manager that allows you to type for an indefinite period of time.
+        """Returns an asynchronous context manager that allows you to type for an indefinite period of time.
 
         This is useful for denoting long computations in your bot.
-
-        .. note::
-
-            This is both a regular context manager and an async context manager.
-            This means that both ``with`` and ``async with`` work with this.
 
         Example Usage: ::
 
@@ -1465,13 +1457,15 @@ class Messageable:
 
             await channel.send('done!')
 
+        .. versionchanged:: 2.0
+            This no longer works with the ``with`` syntax, ``async with`` must be used instead.
         """
         return Typing(self)
 
     async def fetch_message(self, id: int, /) -> Message:
         """|coro|
 
-        Retrieves a single :class:`~nextcord.Message` from the destination.
+        Retrieves a single :class:`~discord.Message` from the destination.
 
         Parameters
         ------------
@@ -1480,16 +1474,16 @@ class Messageable:
 
         Raises
         --------
-        ~nextcord.NotFound
+        ~discord.NotFound
             The specified message was not found.
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have the permissions required to get a message.
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Retrieving the message failed.
 
         Returns
         --------
-        :class:`~nextcord.Message`
+        :class:`~discord.Message`
             The message asked for.
         """
 
@@ -1510,12 +1504,12 @@ class Messageable:
 
         Raises
         -------
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             Retrieving the pinned messages failed.
 
         Returns
         --------
-        List[:class:`~nextcord.Message`]
+        List[:class:`~discord.Message`]
             The messages that are currently pinned.
         """
 
@@ -1524,7 +1518,7 @@ class Messageable:
         data = await state.http.pins_from(channel.id)
         return [state.create_message(channel=channel, data=m) for m in data]
 
-    def history(
+    async def history(
         self,
         *,
         limit: Optional[int] = 100,
@@ -1532,10 +1526,10 @@ class Messageable:
         after: Optional[SnowflakeTime] = None,
         around: Optional[SnowflakeTime] = None,
         oldest_first: Optional[bool] = None,
-    ) -> HistoryIterator:
-        """Returns an :class:`~nextcord.AsyncIterator` that enables receiving the destination's message history.
+    ) -> AsyncIterator[Message]:
+        """Returns an :term:`asynchronous iterator` that enables receiving the destination's message history.
 
-        You must have :attr:`~nextcord.Permissions.read_message_history` permissions to use this.
+        You must have :attr:`~discord.Permissions.read_message_history` permissions to use this.
 
         Examples
         ---------
@@ -1549,7 +1543,7 @@ class Messageable:
 
         Flattening into a list: ::
 
-            messages = await channel.history(limit=123).flatten()
+            messages = [message async for message in channel.history(limit=123)]
             # messages is now a list of Message...
 
         All parameters are optional.
@@ -1560,15 +1554,15 @@ class Messageable:
             The number of messages to retrieve.
             If ``None``, retrieves every message in the channel. Note, however,
             that this would make it a slow operation.
-        before: Optional[Union[:class:`~nextcord.abc.Snowflake`, :class:`datetime.datetime`]]
+        before: Optional[Union[:class:`~discord.abc.Snowflake`, :class:`datetime.datetime`]]
             Retrieve messages before this date or message.
             If a datetime is provided, it is recommended to use a UTC aware datetime.
             If the datetime is naive, it is assumed to be local time.
-        after: Optional[Union[:class:`~nextcord.abc.Snowflake`, :class:`datetime.datetime`]]
+        after: Optional[Union[:class:`~discord.abc.Snowflake`, :class:`datetime.datetime`]]
             Retrieve messages after this date or message.
             If a datetime is provided, it is recommended to use a UTC aware datetime.
             If the datetime is naive, it is assumed to be local time.
-        around: Optional[Union[:class:`~nextcord.abc.Snowflake`, :class:`datetime.datetime`]]
+        around: Optional[Union[:class:`~discord.abc.Snowflake`, :class:`datetime.datetime`]]
             Retrieve messages around this date or message.
             If a datetime is provided, it is recommended to use a UTC aware datetime.
             If the datetime is naive, it is assumed to be local time.
@@ -1580,17 +1574,111 @@ class Messageable:
 
         Raises
         ------
-        ~nextcord.Forbidden
+        ~discord.Forbidden
             You do not have permissions to get channel message history.
-        ~nextcord.HTTPException
+        ~discord.HTTPException
             The request to get message history failed.
 
         Yields
         -------
-        :class:`~nextcord.Message`
+        :class:`~discord.Message`
             The message with the message data parsed.
         """
-        return HistoryIterator(self, limit=limit, before=before, after=after, around=around, oldest_first=oldest_first)
+
+        async def _around_strategy(retrieve, around, limit):
+            if not around:
+                return []
+
+            around_id = around.id if around else None
+            data = await self._state.http.logs_from(channel.id, retrieve, around=around_id)
+
+            return data, None, limit
+
+        async def _after_strategy(retrieve, after, limit):
+            after_id = after.id if after else None
+            data = await self._state.http.logs_from(channel.id, retrieve, after=after_id)
+
+            if data:
+                if limit is not None:
+                    limit -= len(data)
+
+                after = Object(id=int(data[0]['id']))
+
+            return data, after, limit
+
+        async def _before_strategy(retrieve, before, limit):
+            before_id = before.id if before else None
+            data = await self._state.http.logs_from(channel.id, retrieve, before=before_id)
+
+            if data:
+                if limit is not None:
+                    limit -= len(data)
+
+                before = Object(id=int(data[-1]['id']))
+
+            return data, before, limit
+
+        if isinstance(before, datetime):
+            before = Object(id=utils.time_snowflake(before, high=False))
+        if isinstance(after, datetime):
+            after = Object(id=utils.time_snowflake(after, high=True))
+        if isinstance(around, datetime):
+            around = Object(id=utils.time_snowflake(around))
+
+        if oldest_first is None:
+            reverse = after is not None
+        else:
+            reverse = oldest_first
+
+        after = after or OLDEST_OBJECT
+        predicate = None
+
+        if around:
+            if limit is None:
+                raise ValueError('history does not support around with limit=None')
+            if limit > 101:
+                raise ValueError("history max limit 101 when specifying around parameter")
+
+            # Strange Discord quirk
+            limit = 100 if limit == 101 else limit
+
+            strategy, state = _around_strategy, around
+
+            if before and after:
+                predicate = lambda m: after.id < int(m['id']) < before.id
+            elif before:
+                predicate = lambda m: int(m['id']) < before.id
+            elif after:
+                predicate = lambda m: after.id < int(m['id'])
+        elif reverse:
+            strategy, state = _after_strategy, after
+            if before:
+                predicate = lambda m: int(m['id']) < before.id
+        else:
+            strategy, state = _before_strategy, before
+            if after and after != OLDEST_OBJECT:
+                predicate = lambda m: int(m['id']) > after.id
+
+        channel = await self._get_channel()
+
+        while True:
+            retrieve = min(100 if limit is None else limit, 100)
+            if retrieve < 1:
+                return
+
+            data, state, limit = await strategy(retrieve, state, limit)
+
+            # Terminate loop on next iteration; there's no data left after this
+            if len(data) < 100:
+                limit = 0
+
+            if reverse:
+                data = reversed(data)
+            if predicate:
+                data = filter(predicate, data)
+
+            for raw_message in data:
+                yield self._state.create_message(channel=channel, data=raw_message)
 
 
 class Connectable(Protocol):
@@ -1599,13 +1687,8 @@ class Connectable(Protocol):
 
     The following implement this ABC:
 
-    - :class:`~nextcord.VoiceChannel`
-    - :class:`~nextcord.StageChannel`
-
-    Note
-    ----
-    This ABC is not decorated with :func:`typing.runtime_checkable`, so will fail :func:`isinstance`/:func:`issubclass`
-    checks.
+    - :class:`~discord.VoiceChannel`
+    - :class:`~discord.StageChannel`
     """
 
     __slots__ = ()
@@ -1622,14 +1705,14 @@ class Connectable(Protocol):
         *,
         timeout: float = 60.0,
         reconnect: bool = True,
-        cls: Callable[[Client, Connectable], T] = VoiceClient,
+        cls: Callable[[Client, Connectable], T] = MISSING,
     ) -> T:
         """|coro|
 
-        Connects to voice and creates a :class:`VoiceClient` to establish
+        Connects to voice and creates a :class:`~discord.VoiceClient` to establish
         your connection to the voice server.
 
-        This requires :attr:`Intents.voice_states`.
+        This requires :attr:`~discord.Intents.voice_states`.
 
         Parameters
         -----------
@@ -1639,22 +1722,22 @@ class Connectable(Protocol):
             Whether the bot should automatically attempt
             a reconnect if a part of the handshake fails
             or the gateway goes down.
-        cls: Type[:class:`VoiceProtocol`]
-            A type that subclasses :class:`~nextcord.VoiceProtocol` to connect with.
-            Defaults to :class:`~nextcord.VoiceClient`.
+        cls: Type[:class:`~discord.VoiceProtocol`]
+            A type that subclasses :class:`~discord.VoiceProtocol` to connect with.
+            Defaults to :class:`~discord.VoiceClient`.
 
         Raises
         -------
         asyncio.TimeoutError
             Could not connect to the voice channel in time.
-        ~nextcord.ClientException
+        ~discord.ClientException
             You are already connected to a voice channel.
-        ~nextcord.opus.OpusNotLoaded
+        ~discord.opus.OpusNotLoaded
             The opus library has not been loaded.
 
         Returns
         --------
-        :class:`~nextcord.VoiceProtocol`
+        :class:`~discord.VoiceProtocol`
             A voice client that is fully connected to the voice server.
         """
 
@@ -1665,7 +1748,12 @@ class Connectable(Protocol):
             raise ClientException('Already connected to a voice channel.')
 
         client = state._get_client()
-        voice = cls(client, self)
+
+        if cls is MISSING:
+            cls = VoiceClient
+
+        # The type checker doesn't understand that VoiceClient *is* T here.
+        voice: T = cls(client, self)  # type: ignore
 
         if not isinstance(voice, VoiceProtocol):
             raise TypeError('Type must meet VoiceProtocol abstract base class.')

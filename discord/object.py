@@ -24,8 +24,8 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from . import utils
 from .mixins import Hashable
+from .utils import snowflake_time
 
 from typing import (
     SupportsInt,
@@ -38,7 +38,11 @@ if TYPE_CHECKING:
 
     SupportsIntCast = Union[SupportsInt, str, bytes, bytearray]
 
-__all__ = ("Object",)
+# fmt: off
+__all__ = (
+    'Object',
+)
+# fmt: on
 
 
 class Object(Hashable):
@@ -79,17 +83,17 @@ class Object(Hashable):
         try:
             id = int(id)
         except ValueError:
-            raise TypeError(f"id parameter must be convertable to int not {id.__class__!r}") from None
+            raise TypeError(f'id parameter must be convertable to int not {id.__class__!r}') from None
         else:
             self.id = id
 
     def __repr__(self) -> str:
-        return f"<Object id={self.id!r}>"
-
-    def __int__(self) -> int:
-        return self.id
+        return f'<Object id={self.id!r}>'
 
     @property
     def created_at(self) -> datetime.datetime:
         """:class:`datetime.datetime`: Returns the snowflake's creation time in UTC."""
-        return utils.snowflake_time(self.id)
+        return snowflake_time(self.id)
+
+
+OLDEST_OBJECT = Object(id=0)

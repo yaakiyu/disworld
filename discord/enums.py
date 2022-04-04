@@ -2,7 +2,6 @@
 The MIT License (MIT)
 
 Copyright (c) 2015-present Rapptz
-Copyright (c) 2021-present tag-epic
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,16 +21,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+from __future__ import annotations
 
 import types
 from collections import namedtuple
-from typing import Any, ClassVar, Dict, List, Optional, TYPE_CHECKING, Type, TypeVar
+from typing import Any, ClassVar, Dict, List, Optional, TYPE_CHECKING, Tuple, Type, TypeVar, Iterator, Mapping
 
 __all__ = (
     'Enum',
     'ChannelType',
     'MessageType',
-    'VoiceRegion',
     'SpeakingState',
     'VerificationLevel',
     'ContentFilter',
@@ -52,28 +51,36 @@ __all__ = (
     'VideoQualityMode',
     'ComponentType',
     'ButtonStyle',
-    'StagePrivacyLevel',
+    'TextStyle',
+    'PrivacyLevel',
     'InteractionType',
     'InteractionResponseType',
-    'ApplicationCommandType',
-    'ApplicationCommandOptionType',
     'NSFWLevel',
-    'ScheduledEventEntityType',
-    'ScheduledEventPrivacyLevel',
-    'ScheduledEventStatus',
+    'MFALevel',
+    'Locale',
+    'EntityType',
+    'EventStatus',
+    'AppCommandType',
+    'AppCommandOptionType',
 )
 
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
-def _create_value_cls(name, comparable):
+
+def _create_value_cls(name: str, comparable: bool):
+    # All the type ignores here are due to the type checker being unable to recognise
+    # Runtime type creation without exploding.
     cls = namedtuple('_EnumValue_' + name, 'name value')
-    cls.__repr__ = lambda self: f'<{name}.{self.name}: {self.value!r}>'
-    cls.__str__ = lambda self: f'{name}.{self.name}'
+    cls.__repr__ = lambda self: f'<{name}.{self.name}: {self.value!r}>'  # type: ignore
+    cls.__str__ = lambda self: f'{name}.{self.name}'  # type: ignore
     if comparable:
-        cls.__le__ = lambda self, other: isinstance(other, self.__class__) and self.value <= other.value
-        cls.__ge__ = lambda self, other: isinstance(other, self.__class__) and self.value >= other.value
-        cls.__lt__ = lambda self, other: isinstance(other, self.__class__) and self.value < other.value
-        cls.__gt__ = lambda self, other: isinstance(other, self.__class__) and self.value > other.value
+        cls.__le__ = lambda self, other: isinstance(other, self.__class__) and self.value <= other.value  # type: ignore
+        cls.__ge__ = lambda self, other: isinstance(other, self.__class__) and self.value >= other.value  # type: ignore
+        cls.__lt__ = lambda self, other: isinstance(other, self.__class__) and self.value < other.value  # type: ignore
+        cls.__gt__ = lambda self, other: isinstance(other, self.__class__) and self.value > other.value  # type: ignore
     return cls
+
 
 def _is_descriptor(obj):
     return hasattr(obj, '__get__') or hasattr(obj, '__set__') or hasattr(obj, '__delete__')
@@ -86,7 +93,7 @@ class EnumMeta(type):
         _enum_member_map_: ClassVar[Dict[str, Any]]
         _enum_value_map_: ClassVar[Dict[Any, Any]]
 
-    def __new__(cls, name, bases, attrs, *, comparable: bool = False):
+    def __new__(cls, name: str, bases: Tuple[type, ...], attrs: Dict[str, Any], *, comparable: bool = False) -> Self:
         value_mapping = {}
         member_mapping = {}
         member_names = []
@@ -121,41 +128,41 @@ class EnumMeta(type):
         attrs['_enum_member_names_'] = member_names
         attrs['_enum_value_cls_'] = value_cls
         actual_cls = super().__new__(cls, name, bases, attrs)
-        value_cls._actual_enum_cls_ = actual_cls  # type: ignore
+        value_cls._actual_enum_cls_ = actual_cls  # type: ignore # Runtime attribute isn't understood
         return actual_cls
 
-    def __iter__(cls):
+    def __iter__(cls) -> Iterator[Any]:
         return (cls._enum_member_map_[name] for name in cls._enum_member_names_)
 
-    def __reversed__(cls):
+    def __reversed__(cls) -> Iterator[Any]:
         return (cls._enum_member_map_[name] for name in reversed(cls._enum_member_names_))
 
-    def __len__(cls):
+    def __len__(cls) -> int:
         return len(cls._enum_member_names_)
 
-    def __repr__(cls):
+    def __repr__(cls) -> str:
         return f'<enum {cls.__name__}>'
 
     @property
-    def __members__(cls):
+    def __members__(cls) -> Mapping[str, Any]:
         return types.MappingProxyType(cls._enum_member_map_)
 
-    def __call__(cls, value):
+    def __call__(cls, value: str) -> Any:
         try:
             return cls._enum_value_map_[value]
         except (KeyError, TypeError):
             raise ValueError(f"{value!r} is not a valid {cls.__name__}")
 
-    def __getitem__(cls, key):
+    def __getitem__(cls, key: str) -> Any:
         return cls._enum_member_map_[key]
 
-    def __setattr__(cls, name, value):
+    def __setattr__(cls, name: str, value: Any) -> None:
         raise TypeError('Enums are immutable.')
 
-    def __delattr__(cls, attr):
+    def __delattr__(cls, attr: str) -> None:
         raise TypeError('Enums are immutable')
 
-    def __instancecheck__(self, instance):
+    def __instancecheck__(self, instance: Any) -> bool:
         # isinstance(x, Y)
         # -> __instancecheck__(Y, x)
         try:
@@ -184,13 +191,12 @@ class ChannelType(Enum):
     group = 3
     category = 4
     news = 5
-    store = 6
     news_thread = 10
     public_thread = 11
     private_thread = 12
     stage_voice = 13
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -221,45 +227,16 @@ class MessageType(Enum):
     context_menu_command = 23
 
 
-class VoiceRegion(Enum):
-    us_west = 'us-west'
-    us_east = 'us-east'
-    us_south = 'us-south'
-    us_central = 'us-central'
-    eu_west = 'eu-west'
-    eu_central = 'eu-central'
-    singapore = 'singapore'
-    london = 'london'
-    sydney = 'sydney'
-    amsterdam = 'amsterdam'
-    frankfurt = 'frankfurt'
-    brazil = 'brazil'
-    hongkong = 'hongkong'
-    russia = 'russia'
-    japan = 'japan'
-    southafrica = 'southafrica'
-    south_korea = 'south-korea'
-    india = 'india'
-    europe = 'europe'
-    dubai = 'dubai'
-    vip_us_east = 'vip-us-east'
-    vip_us_west = 'vip-us-west'
-    vip_amsterdam = 'vip-amsterdam'
-
-    def __str__(self):
-        return self.value
-
-
 class SpeakingState(Enum):
     none = 0
     voice = 1
     soundshare = 2
     priority = 4
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.value
 
 
@@ -270,7 +247,7 @@ class VerificationLevel(Enum, comparable=True):
     high = 3
     highest = 4
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -279,7 +256,7 @@ class ContentFilter(Enum, comparable=True):
     no_role = 1
     all_members = 2
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -291,7 +268,7 @@ class Status(Enum):
     do_not_disturb = 'dnd'
     invisible = 'invisible'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
 
@@ -303,7 +280,7 @@ class DefaultAvatar(Enum):
     orange = 3
     red = 4
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -454,7 +431,7 @@ class AuditLogAction(Enum):
         elif v < 93:
             return 'sticker'
         elif v < 103:
-            return 'event'
+            return 'guild_scheduled_event'
         elif v < 113:
             return 'thread'
 
@@ -477,7 +454,8 @@ class UserFlags(Enum):
     verified_bot = 65536
     verified_bot_developer = 131072
     discord_certified_moderator = 262144
-    known_spammer = 1048576
+    bot_http_interactions = 524288
+    spammer = 1048576
 
 
 class ActivityType(Enum):
@@ -489,7 +467,7 @@ class ActivityType(Enum):
     custom = 4
     competing = 5
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.value
 
 
@@ -544,7 +522,8 @@ class InteractionType(Enum):
     ping = 1
     application_command = 2
     component = 3
-    application_command_autocomplete = 4
+    autocomplete = 4
+    modal_submit = 5
 
 
 class InteractionResponseType(Enum):
@@ -555,33 +534,15 @@ class InteractionResponseType(Enum):
     deferred_channel_message = 5  # (with source)
     deferred_message_update = 6  # for components
     message_update = 7  # for components
-    application_command_autocomplete_result = 8
-
-
-class ApplicationCommandType(Enum):
-    chat_input = 1
-    user = 2
-    message = 3
-
-
-class ApplicationCommandOptionType(Enum):
-    sub_command = 1
-    sub_command_group = 2
-    string = 3
-    integer = 4
-    boolean = 5
-    user = 6
-    channel = 7
-    role = 8
-    mentionable = 9
-    number = 10  # A double, AKA floating point.
+    autocomplete_result = 8
+    modal = 9  # for modals
 
 
 class VideoQualityMode(Enum):
     auto = 1
     full = 2
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.value
 
 
@@ -589,8 +550,9 @@ class ComponentType(Enum):
     action_row = 1
     button = 2
     select = 3
+    text_input = 4
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.value
 
 
@@ -609,13 +571,22 @@ class ButtonStyle(Enum):
     red = 4
     url = 5
 
-    def __int__(self):
+    def __int__(self) -> int:
         return self.value
 
 
-class StagePrivacyLevel(Enum):
-    public = 1
-    closed = 2
+class TextStyle(Enum):
+    short = 1
+    paragraph = 2
+
+    # Aliases
+    long = 2
+
+    def __int__(self) -> int:
+        return self.value
+
+
+class PrivacyLevel(Enum):
     guild_only = 2
 
 
@@ -626,40 +597,99 @@ class NSFWLevel(Enum, comparable=True):
     age_restricted = 3
 
 
-class ScheduledEventEntityType(Enum):
+class MFALevel(Enum, comparable=True):
+    disabled = 0
+    require_2fa = 1
+
+
+class Locale(Enum):
+    american_english = 'en-US'
+    british_english = 'en-GB'
+    bulgarian = 'bg'
+    chinese = 'zh-CN'
+    taiwan_chinese = 'zh-TW'
+    croatian = 'hr'
+    czech = 'cs'
+    danish = 'da'
+    dutch = 'nl'
+    finnish = 'fi'
+    french = 'fr'
+    german = 'de'
+    greek = 'el'
+    hindi = 'hi'
+    hungarian = 'hu'
+    italian = 'it'
+    japanese = 'ja'
+    korean = 'ko'
+    lithuanian = 'lt'
+    norwegian = 'no'
+    polish = 'pl'
+    brazil_portuguese = 'pt-BR'
+    romanian = 'ro'
+    russian = 'ru'
+    spain_spanish = 'es-ES'
+    swedish = 'sv-SE'
+    thai = 'th'
+    turkish = 'tr'
+    ukrainian = 'uk'
+    vietnamese = 'vi'
+
+    def __str__(self) -> str:
+        return self.value
+
+
+E = TypeVar('E', bound='Enum')
+
+
+class EntityType(Enum):
     stage_instance = 1
     voice = 2
     external = 3
 
 
-class ScheduledEventPrivacyLevel(Enum):
-    guild_only = 2
-
-
-class ScheduledEventStatus(Enum):
+class EventStatus(Enum):
     scheduled = 1
     active = 2
     completed = 3
     canceled = 4
+
+    ended = 3
     cancelled = 4
 
 
-T = TypeVar('T')
+class AppCommandOptionType(Enum):
+    subcommand = 1
+    subcommand_group = 2
+    string = 3
+    integer = 4
+    boolean = 5
+    user = 6
+    channel = 7
+    role = 8
+    mentionable = 9
+    number = 10
+    attachment = 11
 
 
-def create_unknown_value(cls: Type[T], val: Any) -> T:
-    value_cls = cls._enum_value_cls_  # type: ignore
+class AppCommandType(Enum):
+    chat_input = 1
+    user = 2
+    message = 3
+
+
+def create_unknown_value(cls: Type[E], val: Any) -> E:
+    value_cls = cls._enum_value_cls_  # type: ignore # This is narrowed below
     name = f'unknown_{val}'
     return value_cls(name=name, value=val)
 
 
-def try_enum(cls: Type[T], val: Any) -> T:
+def try_enum(cls: Type[E], val: Any) -> E:
     """A function that tries to turn the value into enum ``cls``.
 
     If it fails it returns a proxy invalid value instead.
     """
 
     try:
-        return cls._enum_value_map_[val]  # type: ignore
+        return cls._enum_value_map_[val]  # type: ignore # All errors are caught below
     except (KeyError, TypeError, AttributeError):
         return create_unknown_value(cls, val)

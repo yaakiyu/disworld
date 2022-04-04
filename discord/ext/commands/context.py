@@ -28,6 +28,8 @@ import re
 
 from typing import Any, Dict, Generic, List, Optional, TYPE_CHECKING, TypeVar, Union
 
+from ._types import BotT
+
 import discord.abc
 import discord.utils
 
@@ -43,21 +45,20 @@ if TYPE_CHECKING:
     from discord.user import ClientUser, User
     from discord.voice_client import VoiceProtocol
 
-    from .bot import Bot, AutoShardedBot
     from .cog import Cog
     from .core import Command
-    from .help import HelpCommand
     from .view import StringView
 
+# fmt: off
 __all__ = (
     'Context',
 )
+# fmt: on
 
 MISSING: Any = discord.utils.MISSING
 
 
 T = TypeVar('T')
-BotT = TypeVar('BotT', bound="Union[Bot, AutoShardedBot]")
 CogT = TypeVar('CogT', bound="Cog")
 
 if TYPE_CHECKING:
@@ -94,6 +95,11 @@ class Context(discord.abc.Messageable, Generic[BotT]):
         This is only of use for within converters.
 
         .. versionadded:: 2.0
+    current_argument: Optional[:class:`str`]
+        The argument string of the :attr:`current_parameter` that is currently being converted.
+        This is only of use for within converters.
+
+        .. versionadded:: 2.0
     prefix: Optional[:class:`str`]
         The prefix that was used to invoke the command.
     command: Optional[:class:`Command`]
@@ -122,7 +128,8 @@ class Context(discord.abc.Messageable, Generic[BotT]):
         or invoked.
     """
 
-    def __init__(self,
+    def __init__(
+        self,
         *,
         message: Message,
         bot: BotT,
@@ -130,27 +137,29 @@ class Context(discord.abc.Messageable, Generic[BotT]):
         args: List[Any] = MISSING,
         kwargs: Dict[str, Any] = MISSING,
         prefix: Optional[str] = None,
-        command: Optional[Command] = None,
+        command: Optional[Command[Any, ..., Any]] = None,
         invoked_with: Optional[str] = None,
         invoked_parents: List[str] = MISSING,
-        invoked_subcommand: Optional[Command] = None,
+        invoked_subcommand: Optional[Command[Any, ..., Any]] = None,
         subcommand_passed: Optional[str] = None,
         command_failed: bool = False,
         current_parameter: Optional[inspect.Parameter] = None,
+        current_argument: Optional[str] = None,
     ):
         self.message: Message = message
         self.bot: BotT = bot
         self.args: List[Any] = args or []
         self.kwargs: Dict[str, Any] = kwargs or {}
         self.prefix: Optional[str] = prefix
-        self.command: Optional[Command] = command
+        self.command: Optional[Command[Any, ..., Any]] = command
         self.view: StringView = view
         self.invoked_with: Optional[str] = invoked_with
         self.invoked_parents: List[str] = invoked_parents or []
-        self.invoked_subcommand: Optional[Command] = invoked_subcommand
+        self.invoked_subcommand: Optional[Command[Any, ..., Any]] = invoked_subcommand
         self.subcommand_passed: Optional[str] = subcommand_passed
         self.command_failed: bool = command_failed
         self.current_parameter: Optional[inspect.Parameter] = current_parameter
+        self.current_argument: Optional[str] = current_argument
         self._state: ConnectionState = self.message._state
 
     async def invoke(self, command: Command[CogT, P, T], /, *args: P.args, **kwargs: P.kwargs) -> T:
@@ -169,6 +178,10 @@ class Context(discord.abc.Messageable, Generic[BotT]):
 
             You must take care in passing the proper arguments when
             using this function.
+
+        .. versionchanged:: 2.0
+
+            ``command`` parameter is now positional-only.
 
         Parameters
         -----------
@@ -233,7 +246,7 @@ class Context(discord.abc.Messageable, Generic[BotT]):
             view.index = len(self.prefix or '')
             view.previous = 0
             self.invoked_parents = []
-            self.invoked_with = view.get_word() # advance to get the root command
+            self.invoked_with = view.get_word()  # advance to get the root command
         else:
             to_call = cmd
 
@@ -355,6 +368,7 @@ class Context(discord.abc.Messageable, Generic[BotT]):
 
         cmd = cmd.copy()
         cmd.context = self
+
         if len(args) == 0:
             await cmd.prepare_help_command(self, None)
             mapping = cmd.get_bot_mapping()

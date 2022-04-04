@@ -2,7 +2,6 @@
 The MIT License (MIT)
 
 Copyright (c) 2015-present Rapptz
-Copyright (c) 2021-present tag-epic
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -26,21 +25,17 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 from typing import List, Literal, Optional, TypedDict, Union
+from typing_extensions import NotRequired
 
-from .channel import ChannelType, VideoQualityMode, PermissionOverwrite
-from .guild import (
-    MFALevel,
-    VerificationLevel,
-    ExplicitContentFilterLevel,
-    DefaultMessageNotificationLevel
-)
+from .webhook import Webhook
+from .guild import MFALevel, VerificationLevel, ExplicitContentFilterLevel, DefaultMessageNotificationLevel
 from .integration import IntegrationExpireBehavior, PartialIntegration
+from .user import User
+from .scheduled_event import EntityType, EventStatus, GuildScheduledEvent
 from .snowflake import Snowflake
 from .role import Role
-from .scheduled_events import ScheduledEventEntityType
+from .channel import ChannelType, PrivacyLevel, VideoQualityMode, PermissionOverwrite
 from .threads import Thread
-from .user import User
-from .webhook import Webhook
 
 AuditLogEvent = Literal[
     1,
@@ -95,7 +90,17 @@ AuditLogEvent = Literal[
 
 class _AuditLogChange_Str(TypedDict):
     key: Literal[
-        'name', 'description', 'preferred_locale', 'vanity_url_code', 'topic', 'code', 'allow', 'deny', 'permissions', 'tags'
+        'name',
+        'description',
+        'preferred_locale',
+        'vanity_url_code',
+        'topic',
+        'code',
+        'allow',
+        'deny',
+        'permissions',
+        'tags',
+        'unicode_emoji',
     ]
     new_value: str
     old_value: str
@@ -149,16 +154,17 @@ class _AuditLogChange_Bool(TypedDict):
 class _AuditLogChange_Int(TypedDict):
     key: Literal[
         'afk_timeout',
-        'auto_archive_duration',
-        'bitrate',
-        'color',
-        'default_auto_archive_duration',
-        'max_age',
-        'max_uses',
-        'position',
         'prune_delete_days',
+        'position',
+        'bitrate',
         'rate_limit_per_user',
+        'color',
+        'max_uses',
+        'max_age',
         'user_limit',
+        'auto_archive_duration',
+        'default_auto_archive_duration',
+        'communication_disabled_until',
     ]
     new_value: int
     old_value: int
@@ -218,28 +224,42 @@ class _AuditLogChange_Overwrites(TypedDict):
     old_value: List[PermissionOverwrite]
 
 
-class _AuditLogChange_ScheduledEventEntityType(TypedDict):
+class _AuditLogChange_PrivacyLevel(TypedDict):
+    key: Literal['privacy_level']
+    new_value: PrivacyLevel
+    old_value: PrivacyLevel
+
+
+class _AuditLogChange_Status(TypedDict):
+    key: Literal['status']
+    new_value: EventStatus
+    old_value: EventStatus
+
+
+class _AuditLogChange_EntityType(TypedDict):
     key: Literal['entity_type']
-    new_value: ScheduledEventEntityType
-    old_value: ScheduledEventEntityType
+    new_value: EntityType
+    old_value: EntityType
 
 
 AuditLogChange = Union[
+    _AuditLogChange_Str,
     _AuditLogChange_AssetHash,
-    _AuditLogChange_Bool,
-    _AuditLogChange_ChannelType,
-    _AuditLogChange_DefaultMessageNotificationLevel,
-    _AuditLogChange_ScheduledEventEntityType,
-    _AuditLogChange_ExplicitContentFilter,
+    _AuditLogChange_Snowflake,
     _AuditLogChange_Int,
-    _AuditLogChange_IntegrationExpireBehaviour,
+    _AuditLogChange_Bool,
     _AuditLogChange_ListRole,
     _AuditLogChange_MFALevel,
-    _AuditLogChange_Overwrites,
-    _AuditLogChange_Snowflake,
-    _AuditLogChange_Str,
     _AuditLogChange_VerificationLevel,
+    _AuditLogChange_ExplicitContentFilter,
+    _AuditLogChange_DefaultMessageNotificationLevel,
+    _AuditLogChange_ChannelType,
+    _AuditLogChange_IntegrationExpireBehaviour,
     _AuditLogChange_VideoQualityMode,
+    _AuditLogChange_Overwrites,
+    _AuditLogChange_PrivacyLevel,
+    _AuditLogChange_Status,
+    _AuditLogChange_EntityType,
 ]
 
 
@@ -254,17 +274,14 @@ class AuditEntryInfo(TypedDict):
     role_name: str
 
 
-class _AuditLogEntryOptional(TypedDict, total=False):
-    changes: List[AuditLogChange]
-    options: AuditEntryInfo
-    reason: str
-
-
-class AuditLogEntry(_AuditLogEntryOptional):
+class AuditLogEntry(TypedDict):
     target_id: Optional[str]
     user_id: Optional[Snowflake]
     id: Snowflake
     action_type: AuditLogEvent
+    changes: NotRequired[List[AuditLogChange]]
+    options: NotRequired[AuditEntryInfo]
+    reason: NotRequired[str]
 
 
 class AuditLog(TypedDict):
@@ -273,3 +290,4 @@ class AuditLog(TypedDict):
     audit_log_entries: List[AuditLogEntry]
     integrations: List[PartialIntegration]
     threads: List[Thread]
+    guild_scheduled_events: List[GuildScheduledEvent]

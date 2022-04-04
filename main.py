@@ -6,8 +6,8 @@ import utils
 import dislash
 import keep_alive
 import data
-# mode(0=normal, 1=test, 2=DB_special)
-mode = 0
+# mode(0=normal, 1=test, 2=special)
+mode = 1
 
 # bot settings
 s = {

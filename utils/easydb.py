@@ -14,7 +14,8 @@ class EasyDB():
         """「EasyDB.(テーブル名)」(Tableオブジェクト)が作成される。
         table_name:テーブル名
         **values:(キーワード引数)中身 {value:type}"""
-        m = [f"{k} {v}" for k, v in values.items()]
+        m = [f"{k} {v}"
+             for k, v in values.items()]
         self.cur.execute(f"CREATE TABLE IF NOT EXISTS {table_name}({', '.join(m)})")
         if not getattr(self, table_name, False):
             setattr(self, table_name, Table(table_name, self.conn, self.cur))
@@ -35,12 +36,14 @@ class EasyDB():
     def get_all_tables(self) -> list:
         """EasyDB.(テーブル名)は作成されず、List[Table]が返る。"""
         self.cur.execute("select name from SQLITE_MASTER where type='table' ORDER BY name")
-        return [Table(f[0], self.conn, self.cur) for f in self.cur.fetchall()]
+        return [Table(f[0], self.conn, self.cur)
+                for f in self.cur.fetchall()]
 
     def get_all_tables_name(self) -> List[str]:
         """テーブル名だけのリストが返る。"""
         self.cur.execute("select name from SQLITE_MASTER where type='table' ORDER BY name")
-        return [f[0] for f in self.cur.fetchall()]
+        return [f[0] 
+                for f in self.cur.fetchall()]
 
     def do(self, *commands, commit: Optional[bool]=True) -> Optional[List[str]]:
         """sql構文をそのまま実行する。"""
@@ -135,11 +138,15 @@ class Table():
         if len(where.keys()) == 0:
             whered = ""
         else:
-            whered = " WHERE " + f" {mode} ".join([f"{k}={self._execute_data_create(v)}" for k,v in where.items()])
+            whered = " WHERE " + f" {mode} ".join(
+                [f"{k}={self._execute_data_create(v)}"
+                 for k,v in where.items()]
+            )
         if get is None:
             get = "*"
-        elif get not in values:
+        elif (get not in values) or get != "*":
             raise KeyError("引数の中におかしいものが含まれています")
+
         if sort is None:
             sort = ""
         elif not sort in values:

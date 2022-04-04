@@ -2,7 +2,6 @@
 The MIT License (MIT)
 
 Copyright (c) 2015-present Rapptz
-Copyright (c) 2021-present tag-epic
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,9 +24,13 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import Any, Callable, ClassVar, Dict, Generic, Iterator, List, Optional, Tuple, Type, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Iterator, List, Optional, Tuple, Type, TypeVar, overload
 
 from .enums import UserFlags
+
+if TYPE_CHECKING:
+    from typing_extensions import Self
+
 
 __all__ = (
     'SystemChannelFlags',
@@ -38,17 +41,16 @@ __all__ = (
     'ApplicationFlags',
 )
 
-FV = TypeVar('FV', bound='flag_value')
 BF = TypeVar('BF', bound='BaseFlags')
 
 
 class flag_value:
     def __init__(self, func: Callable[[Any], int]):
-        self.flag = func(None)
-        self.__doc__ = func.__doc__
+        self.flag: int = func(None)
+        self.__doc__: Optional[str] = func.__doc__
 
     @overload
-    def __get__(self: FV, instance: None, owner: Type[BF]) -> FV:
+    def __get__(self, instance: None, owner: Type[BF]) -> Self:
         ...
 
     @overload
@@ -60,10 +62,10 @@ class flag_value:
             return self
         return instance._has_flag(self.flag)
 
-    def __set__(self, instance: BF, value: bool) -> None:
+    def __set__(self, instance: BaseFlags, value: bool) -> None:
         instance._set_flag(self.flag, value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<flag_value flag={self.flag!r}>'
 
 
@@ -71,8 +73,8 @@ class alias_flag_value(flag_value):
     pass
 
 
-def fill_with_flags(*, inverted: bool = False):
-    def decorator(cls: Type[BF]):
+def fill_with_flags(*, inverted: bool = False) -> Callable[[Type[BF]], Type[BF]]:
+    def decorator(cls: Type[BF]) -> Type[BF]:
         # fmt: off
         cls.VALID_FLAGS = {
             name: value.flag
@@ -83,7 +85,7 @@ def fill_with_flags(*, inverted: bool = False):
 
         if inverted:
             max_bits = max(cls.VALID_FLAGS.values()).bit_length()
-            cls.DEFAULT_VALUE = -1 + (2 ** max_bits)
+            cls.DEFAULT_VALUE = -1 + (2**max_bits)
         else:
             cls.DEFAULT_VALUE = 0
 
@@ -114,10 +116,10 @@ class BaseFlags:
         self.value = value
         return self
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, self.__class__) and self.value == other.value
 
-    def __ne__(self, other: Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self.__eq__(other)
 
     def __hash__(self) -> int:
@@ -217,6 +219,15 @@ class SystemChannelFlags(BaseFlags):
         """
         return 4
 
+    @flag_value
+    def join_notification_replies(self):
+        """:class:`bool`: Returns ``True`` if sticker reply button ("Wave to say hi!") is
+        shown for member join notifications.
+
+        .. versionadded:: 2.0
+        """
+        return 8
+
 
 @fill_with_flags()
 class MessageFlags(BaseFlags):
@@ -295,6 +306,24 @@ class MessageFlags(BaseFlags):
         .. versionadded:: 2.0
         """
         return 64
+
+    @flag_value
+    def loading(self):
+        """:class:`bool`: Returns ``True`` if the message is an interaction response and the bot
+        is "thinking".
+
+        .. versionadded:: 2.0
+        """
+        return 128
+
+    @flag_value
+    def failed_to_mention_some_roles_in_thread(self):
+        """:class:`bool`: Returns ``True`` if the message failed to mention some roles in a thread
+        and add their members to the thread.
+
+        .. versionadded:: 2.0
+        """
+        return 256
 
 
 @fill_with_flags()
@@ -412,12 +441,21 @@ class PublicUserFlags(BaseFlags):
         return UserFlags.discord_certified_moderator.value
 
     @flag_value
-    def known_spammer(self):
-        """:class:`bool`: Returns ``True`` if the user is a Known Spammer.
+    def bot_http_interactions(self):
+        """:class:`bool`: Returns ``True`` if the user is a bot that only uses HTTP interactions
+        and is shown in the online member list.
 
         .. versionadded:: 2.0
         """
-        return UserFlags.known_spammer.value
+        return UserFlags.bot_http_interactions.value
+
+    @flag_value
+    def spammer(self):
+        """:class:`bool`: Returns ``True`` if the user is flagged as a spammer by Discord.
+
+        .. versionadded:: 2.0
+        """
+        return UserFlags.spammer.value
 
     def all(self) -> List[UserFlags]:
         """List[:class:`UserFlags`]: Returns all public flags the user has."""
@@ -466,8 +504,8 @@ class Intents(BaseFlags):
 
     __slots__ = ()
 
-    def __init__(self, **kwargs: bool):
-        self.value = self.DEFAULT_VALUE
+    def __init__(self, **kwargs: bool) -> None:
+        self.value: int = self.DEFAULT_VALUE
         for key, value in kwargs.items():
             if key not in self.VALID_FLAGS:
                 raise TypeError(f'{key!r} is not a valid flag name.')
@@ -492,11 +530,12 @@ class Intents(BaseFlags):
     @classmethod
     def default(cls: Type[Intents]) -> Intents:
         """A factory method that creates a :class:`Intents` with everything enabled
-        except :attr:`presences` and :attr:`members`.
+        except :attr:`presences`, :attr:`members`, and :attr:`message_content`.
         """
         self = cls.all()
         self.presences = False
         self.members = False
+        self.message_content = False
         return self
 
     @flag_value
@@ -876,16 +915,45 @@ class Intents(BaseFlags):
         return 1 << 14
 
     @flag_value
-    def scheduled_events(self):
-        """:class:`bool`: Whether scheduled events related events are enabled.
+    def message_content(self):
+        """:class:`bool`: Whether message content, attachments, embeds and components will be available in messages
+        which do not meet the following criteria:
+
+        - The message was sent by the client
+        - The message was sent in direct messages
+        - The message mentions the client
+
+        This applies to the following events:
+
+        - :func:`on_message`
+        - :func:`on_message_edit`
+        - :func:`on_message_delete`
+        - :func:`on_raw_message_edit`
+
+        For more information go to the :ref:`message content intent documentation <need_message_content_intent>`.
+
+        .. note::
+
+            Currently, this requires opting in explicitly via the developer portal as well.
+            Bots in over 100 guilds will need to apply to Discord for verification.
+
+        .. versionadded:: 2.0
+        """
+        return 1 << 15
+
+    @flag_value
+    def guild_scheduled_events(self):
+        """:class:`bool`: Whether guild scheduled event related events are enabled.
 
         This corresponds to the following events:
 
-        - :func:`on_guild_scheduled_event_create`
-        - :func:`on_guild_scheduled_event_delete`
-        - :func:`on_guild_scheduled_event_update`
+        - :func:`on_scheduled_event_create`
+        - :func:`on_scheduled_event_update`
+        - :func:`on_scheduled_event_delete`
+        - :func:`on_scheduled_event_user_add`
+        - :func:`on_scheduled_event_user_remove`
 
-        This does not correspond to any attributes or classes in the library in terms of cache.
+        .. versionadded:: 2.0
         """
         return 1 << 16
 
@@ -937,7 +1005,7 @@ class MemberCacheFlags(BaseFlags):
 
     def __init__(self, **kwargs: bool):
         bits = max(self.VALID_FLAGS.values()).bit_length()
-        self.value = (1 << bits) - 1
+        self.value: int = (1 << bits) - 1
         for key, value in kwargs.items():
             if key not in self.VALID_FLAGS:
                 raise TypeError(f'{key!r} is not a valid flag name.')
@@ -1089,3 +1157,15 @@ class ApplicationFlags(BaseFlags):
     def embedded(self):
         """:class:`bool`: Returns ``True`` if the application is embedded within the Discord client."""
         return 1 << 17
+
+    @flag_value
+    def gateway_message_content(self):
+        """:class:`bool`: Returns ``True`` if the application is verified and is allowed to
+        read message content in guilds."""
+        return 1 << 18
+
+    @flag_value
+    def gateway_message_content_limited(self):
+        """:class:`bool`: Returns ``True`` if the application is unverified and is allowed to
+        read message content in guilds."""
+        return 1 << 19

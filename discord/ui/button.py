@@ -24,7 +24,7 @@ DEALINGS IN THE SOFTWARE.
 
 from __future__ import annotations
 
-from typing import Callable, Optional, TYPE_CHECKING, Tuple, Type, TypeVar, Union
+from typing import Callable, Optional, TYPE_CHECKING, Tuple, TypeVar, Union
 import inspect
 import os
 
@@ -40,10 +40,12 @@ __all__ = (
 )
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from .view import View
     from ..emoji import Emoji
+    from ..types.components import ButtonComponent as ButtonComponentPayload
 
-B = TypeVar('B', bound='Button')
 V = TypeVar('V', bound='View', covariant=True)
 
 
@@ -54,7 +56,7 @@ class Button(Item[V]):
 
     Parameters
     ------------
-    style: :class:`nextcord.ButtonStyle`
+    style: :class:`discord.ButtonStyle`
         The style of the button.
     custom_id: Optional[:class:`str`]
         The ID of the button that gets received during an interaction.
@@ -103,6 +105,9 @@ class Button(Item[V]):
         if url is None and custom_id is None:
             custom_id = os.urandom(16).hex()
 
+        if custom_id is not None and not isinstance(custom_id, str):
+            raise TypeError(f'expected custom_id to be str not {custom_id.__class__!r}')
+
         if url is not None:
             style = ButtonStyle.link
 
@@ -127,11 +132,11 @@ class Button(Item[V]):
 
     @property
     def style(self) -> ButtonStyle:
-        """:class:`nextcord.ButtonStyle`: The style of the button."""
+        """:class:`discord.ButtonStyle`: The style of the button."""
         return self._underlying.style
 
     @style.setter
-    def style(self, value: ButtonStyle):
+    def style(self, value: ButtonStyle) -> None:
         self._underlying.style = value
 
     @property
@@ -143,7 +148,7 @@ class Button(Item[V]):
         return self._underlying.custom_id
 
     @custom_id.setter
-    def custom_id(self, value: Optional[str]):
+    def custom_id(self, value: Optional[str]) -> None:
         if value is not None and not isinstance(value, str):
             raise TypeError('custom_id must be None or str')
 
@@ -155,7 +160,7 @@ class Button(Item[V]):
         return self._underlying.url
 
     @url.setter
-    def url(self, value: Optional[str]):
+    def url(self, value: Optional[str]) -> None:
         if value is not None and not isinstance(value, str):
             raise TypeError('url must be None or str')
         self._underlying.url = value
@@ -166,7 +171,7 @@ class Button(Item[V]):
         return self._underlying.disabled
 
     @disabled.setter
-    def disabled(self, value: bool):
+    def disabled(self, value: bool) -> None:
         self._underlying.disabled = bool(value)
 
     @property
@@ -175,7 +180,7 @@ class Button(Item[V]):
         return self._underlying.label
 
     @label.setter
-    def label(self, value: Optional[str]):
+    def label(self, value: Optional[str]) -> None:
         self._underlying.label = str(value) if value is not None else value
 
     @property
@@ -184,7 +189,7 @@ class Button(Item[V]):
         return self._underlying.emoji
 
     @emoji.setter
-    def emoji(self, value: Optional[Union[str, Emoji, PartialEmoji]]):  # type: ignore
+    def emoji(self, value: Optional[Union[str, Emoji, PartialEmoji]]) -> None:
         if value is not None:
             if isinstance(value, str):
                 self._underlying.emoji = PartialEmoji.from_str(value)
@@ -196,7 +201,7 @@ class Button(Item[V]):
             self._underlying.emoji = None
 
     @classmethod
-    def from_component(cls: Type[B], button: ButtonComponent) -> B:
+    def from_component(cls, button: ButtonComponent) -> Self:
         return cls(
             style=button.style,
             label=button.label,
@@ -211,7 +216,7 @@ class Button(Item[V]):
     def type(self) -> ComponentType:
         return self._underlying.type
 
-    def to_component_dict(self):
+    def to_component_dict(self) -> ButtonComponentPayload:
         return self._underlying.to_dict()
 
     def is_dispatchable(self) -> bool:
@@ -222,7 +227,7 @@ class Button(Item[V]):
             return self.url is not None
         return super().is_persistent()
 
-    def refresh_component(self, button: ButtonComponent) -> None:
+    def _refresh_component(self, button: ButtonComponent) -> None:
         self._underlying = button
 
 
@@ -234,12 +239,12 @@ def button(
     style: ButtonStyle = ButtonStyle.secondary,
     emoji: Optional[Union[str, Emoji, PartialEmoji]] = None,
     row: Optional[int] = None,
-) -> Callable[[ItemCallbackType], ItemCallbackType]:
+) -> Callable[[ItemCallbackType[V, Button[V]]], Button[V]]:
     """A decorator that attaches a button to a component.
 
     The function being decorated should have three parameters, ``self`` representing
-    the :class:`nextcord.ui.View`, the :class:`nextcord.ui.Button` being pressed and
-    the :class:`nextcord.Interaction` you receive.
+    the :class:`discord.ui.View`, the :class:`discord.Interaction` you receive and
+    the :class:`discord.ui.Button` being pressed.
 
     .. note::
 
@@ -271,7 +276,7 @@ def button(
         ordering. The row number must be between 0 and 4 (i.e. zero indexed).
     """
 
-    def decorator(func: ItemCallbackType) -> ItemCallbackType:
+    def decorator(func: ItemCallbackType[V, Button[V]]) -> ItemCallbackType[V, Button[V]]:
         if not inspect.iscoroutinefunction(func):
             raise TypeError('button function must be a coroutine function')
 
@@ -287,4 +292,4 @@ def button(
         }
         return func
 
-    return decorator
+    return decorator  # type: ignore

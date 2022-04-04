@@ -39,16 +39,13 @@ if TYPE_CHECKING:
 
 __all__ = (
     'DiscordException',
-    'InvalidCommandType',
     'ClientException',
-    'NoMoreItems',
     'GatewayNotFound',
     'HTTPException',
     'Forbidden',
     'NotFound',
     'DiscordServerError',
     'InvalidData',
-    'InvalidArgument',
     'LoginFailure',
     'ConnectionClosed',
     'PrivilegedIntentsRequired',
@@ -57,7 +54,7 @@ __all__ = (
 
 
 class DiscordException(Exception):
-    """Base exception class for nextcord
+    """Base exception class for discord.py
 
     Ideally speaking, this could be caught to handle any exceptions raised from this library.
     """
@@ -70,17 +67,6 @@ class ClientException(DiscordException):
 
     These are usually for exceptions that happened due to user input.
     """
-
-    pass
-
-
-class InvalidCommandType(ClientException):
-    """Raised when an unhandled Application Command type is encountered."""
-    pass
-
-
-class NoMoreItems(DiscordException):
-    """Exception that is raised when an async iteration operation has no more items."""
 
     pass
 
@@ -131,7 +117,7 @@ class HTTPException(DiscordException):
 
     def __init__(self, response: _ResponseType, message: Optional[Union[str, Dict[str, Any]]]):
         self.response: _ResponseType = response
-        self.status: int = response.status  # type: ignore
+        self.status: int = response.status  # type: ignore # This attribute is filled by the library even if using requests
         self.code: int
         self.text: str
         if isinstance(message, dict):
@@ -187,18 +173,6 @@ class DiscordServerError(HTTPException):
 class InvalidData(ClientException):
     """Exception that's raised when the library encounters unknown
     or invalid data from Discord.
-    """
-
-    pass
-
-
-class InvalidArgument(ClientException):
-    """Exception that's raised when an argument to a function
-    is invalid some way (e.g. wrong value or wrong type).
-
-    This could be considered the analogous of ``ValueError`` and
-    ``TypeError`` except inherited from :exc:`ClientException` and thus
-    :exc:`DiscordException`.
     """
 
     pass

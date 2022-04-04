@@ -25,7 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 
-from typing import Any, Callable, Deque, Dict, Optional, Type, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Deque, Dict, Optional, TYPE_CHECKING
 from discord.enums import Enum
 import time
 import asyncio
@@ -33,8 +33,11 @@ from collections import deque
 
 from ...abc import PrivateChannel
 from .errors import MaxConcurrencyReached
+from discord.app_commands import Cooldown as Cooldown
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from ...message import Message
 
 __all__ = (
@@ -45,17 +48,15 @@ __all__ = (
     'MaxConcurrency',
 )
 
-C = TypeVar('C', bound='CooldownMapping')
-MC = TypeVar('MC', bound='MaxConcurrency')
 
 class BucketType(Enum):
-    default  = 0
-    user     = 1
-    guild    = 2
-    channel  = 3
-    member   = 4
+    default = 0
+    user = 1
+    guild = 2
+    channel = 3
+    member = 4
     category = 5
-    role     = 6
+    role = 6
 
     def get_key(self, msg: Message) -> Any:
         if self is BucketType.user:
@@ -72,125 +73,12 @@ class BucketType(Enum):
             # we return the channel id of a private-channel as there are only roles in guilds
             # and that yields the same result as for a guild with only the @everyone role
             # NOTE: PrivateChannel doesn't actually have an id attribute but we assume we are
-            # recieving a DMChannel or GroupChannel which inherit from PrivateChannel and do
+            # receiving a DMChannel or GroupChannel which inherit from PrivateChannel and do
             return (msg.channel if isinstance(msg.channel, PrivateChannel) else msg.author.top_role).id  # type: ignore
 
     def __call__(self, msg: Message) -> Any:
         return self.get_key(msg)
 
-
-class Cooldown:
-    """Represents a cooldown for a command.
-
-    Attributes
-    -----------
-    rate: :class:`int`
-        The total number of tokens available per :attr:`per` seconds.
-    per: :class:`float`
-        The length of the cooldown period in seconds.
-    """
-
-    __slots__ = ('rate', 'per', '_window', '_tokens', '_last')
-
-    def __init__(self, rate: float, per: float) -> None:
-        self.rate: int = int(rate)
-        self.per: float = float(per)
-        self._window: float = 0.0
-        self._tokens: int = self.rate
-        self._last: float = 0.0
-
-    def get_tokens(self, current: Optional[float] = None) -> int:
-        """Returns the number of available tokens before rate limiting is applied.
-
-        Parameters
-        ------------
-        current: Optional[:class:`float`]
-            The time in seconds since Unix epoch to calculate tokens at.
-            If not supplied then :func:`time.time()` is used.
-
-        Returns
-        --------
-        :class:`int`
-            The number of tokens available before the cooldown is to be applied.
-        """
-        if not current:
-            current = time.time()
-
-        tokens = self._tokens
-
-        if current > self._window + self.per:
-            tokens = self.rate
-        return tokens
-
-    def get_retry_after(self, current: Optional[float] = None) -> float:
-        """Returns the time in seconds until the cooldown will be reset.
-
-        Parameters
-        -------------
-        current: Optional[:class:`float`]
-            The current time in seconds since Unix epoch.
-            If not supplied, then :func:`time.time()` is used.
-
-        Returns
-        -------
-        :class:`float`
-            The number of seconds to wait before this cooldown will be reset.
-        """
-        current = current or time.time()
-        tokens = self.get_tokens(current)
-
-        if tokens == 0:
-            return self.per - (current - self._window)
-
-        return 0.0
-
-    def update_rate_limit(self, current: Optional[float] = None) -> Optional[float]:
-        """Updates the cooldown rate limit.
-
-        Parameters
-        -------------
-        current: Optional[:class:`float`]
-            The time in seconds since Unix epoch to update the rate limit at.
-            If not supplied, then :func:`time.time()` is used.
-
-        Returns
-        -------
-        Optional[:class:`float`]
-            The retry-after time in seconds if rate limited.
-        """
-        current = current or time.time()
-        self._last = current
-
-        self._tokens = self.get_tokens(current)
-
-        # first token used means that we start a new rate limit window
-        if self._tokens == self.rate:
-            self._window = current
-
-        # check if we are rate limited
-        if self._tokens == 0:
-            return self.per - (current - self._window)
-
-        # we're not so decrement our tokens
-        self._tokens -= 1
-
-    def reset(self) -> None:
-        """Reset the cooldown to its initial state."""
-        self._tokens = self.rate
-        self._last = 0.0
-
-    def copy(self) -> Cooldown:
-        """Creates a copy of this cooldown.
-
-        Returns
-        --------
-        :class:`Cooldown`
-            A new instance of this cooldown.
-        """
-        return Cooldown(self.rate, self.per)
-
-    def __repr__(self) -> str:
-        return f'<Cooldown rate: {self.rate} per: {self.per} window: {self._window} tokens: {self._tokens}>'
 
 class CooldownMapping:
     def __init__(
@@ -219,7 +107,7 @@ class CooldownMapping:
         return self._type
 
     @classmethod
-    def from_cooldown(cls: Type[C], rate, per, type) -> C:
+    def from_cooldown(cls, rate: float, per: float, type: Callable[[Message], Any]) -> Self:
         return cls(Cooldown(rate, per), type)
 
     def _bucket_key(self, msg: Message) -> Any:
@@ -234,15 +122,11 @@ class CooldownMapping:
         for k in dead_keys:
             del self._cache[k]
 
-    def _is_default(self) -> bool:
-        # This method can be overridden in subclasses
-        return self._type is BucketType.default
-
     def create_bucket(self, message: Message) -> Cooldown:
         return self._cooldown.copy()  # type: ignore
 
     def get_bucket(self, message: Message, current: Optional[float] = None) -> Cooldown:
-        if self._is_default():
+        if self._type is BucketType.default:
             return self._cooldown  # type: ignore
 
         self._verify_cache_integrity(current)
@@ -260,12 +144,12 @@ class CooldownMapping:
         bucket = self.get_bucket(message, current)
         return bucket.update_rate_limit(current)
 
-class DynamicCooldownMapping(CooldownMapping):
 
+class DynamicCooldownMapping(CooldownMapping):
     def __init__(
         self,
         factory: Callable[[Message], Cooldown],
-        type: Callable[[Message], Any]
+        type: Callable[[Message], Any],
     ) -> None:
         super().__init__(None, type)
         self._factory: Callable[[Message], Cooldown] = factory
@@ -279,12 +163,9 @@ class DynamicCooldownMapping(CooldownMapping):
     def valid(self) -> bool:
         return True
 
-    def _is_default(self) -> bool:
-        # In dynamic mappings even default bucket types may have custom behavior
-        return False
-
     def create_bucket(self, message: Message) -> Cooldown:
         return self._factory(message)
+
 
 class _Semaphore:
     """This class is a version of a semaphore.
@@ -303,7 +184,7 @@ class _Semaphore:
 
     def __init__(self, number: int) -> None:
         self.value: int = number
-        self.loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
+        self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self._waiters: Deque[asyncio.Future] = deque()
 
     def __repr__(self) -> str:
@@ -345,6 +226,7 @@ class _Semaphore:
         self.value += 1
         self.wake_up()
 
+
 class MaxConcurrency:
     __slots__ = ('number', 'per', 'wait', '_mapping')
 
@@ -360,7 +242,7 @@ class MaxConcurrency:
         if not isinstance(per, BucketType):
             raise TypeError(f'max_concurrency \'per\' must be of type BucketType not {type(per)!r}')
 
-    def copy(self: MC) -> MC:
+    def copy(self) -> Self:
         return self.__class__(self.number, per=self.per, wait=self.wait)
 
     def __repr__(self) -> str:

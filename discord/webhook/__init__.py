@@ -1,5 +1,5 @@
 """
-nextcord.webhook
+discord.webhook
 ~~~~~~~~~~~~~~
 
 Webhook support
