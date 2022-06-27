@@ -2,14 +2,13 @@ from discord.ext import commands, tasks
 import traceback
 import os
 
+
 class First(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        
 
-    @commands.Cog.listener("on_full_ready")
-    async def ready(self):
-        self.bot.print("on_full_ready.", mode="first")
+    async def cog_load(self):
+        self.bot.print("the first cog was loaded.", mode="first")
         count = 0
         allcogs = os.listdir("cogs/")
 
@@ -17,20 +16,18 @@ class First(commands.Cog):
         for s in allcogs:
             if not s.startswith("_"):
                 try:
-                    await self.bot.load_extension(
-                        f"cogs.{s[:-3] if s.endswith('.py') else s}"
-                    )
+                    file_name = s[:-3] if s.endswith('.py') else s
+                    await self.bot.load_extension(f"cogs.{file_name}")
                     self.bot.print(
-                        f"loaded cogs.{s[:-3] if s.endswith('.py') else s}",
-                        mode="first"
+                        f"loaded cogs.{file_name}", mode="first"
                     )
-                except BaseException:
+                except Exception:
                     count += 1
                     traceback.print_exc()
         self.bot.print(
-            f"all {len(allcogs)} cogs \
-            {'successfully ' if not count else ''}loaded\
-            {f' and {count} cogs gave an error' if count else ''}.",
+            f"all {len(allcogs)} cogs"
+            f"{'successfully ' if not count else ''}loaded"
+            f"{f' and {count} cog(s) gave an error' if count else ''}.",
             mode="first"
         )
 
@@ -41,8 +38,6 @@ class First(commands.Cog):
     @tasks.loop(seconds=60)
     async def save(self):
         self.bot.db.commit()
-        if self.bot.command_prefix == "g2.":
-            self.bot.print("saved data.")
 
 
 async def setup(bot):

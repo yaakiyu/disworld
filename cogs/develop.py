@@ -1,29 +1,30 @@
 from discord.ext import commands
+from discord import app_commands
 import discord
 
-dev_guilds = [699120642796028014, 794079140462460979]
+dev_guilds = (discord.Object(a) for a in [699120642796028014, 794079140462460979])
 
 class Develop(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-#    @slash_commands.command(
-#        guild_ids=dev_guilds,
-#        description="管理者専用DB操作コマンド",
-#        options=[Option("content", "実行するsql構文", required=True)]
-#    )
+    @app_commands.command(
+        description="管理者専用DB操作コマンド"
+    )
+    @app_commands.guilds(*dev_guilds)
+    @app_commands.describe(content="実行するSQL文")
     async def db(self, inter, content):
         if inter.author.id in self.bot.owner_ids:
             await inter.reply("結果:" + str(self.bot.db.do(content)), ephemeral=True)
         else:
             await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
 
-#    @slash_commands.command(
-#        guild_ids=dev_guilds,
-#        description="管理者専用ヘルプコマンド",
-#        options=[Option("command", "詳しいヘルプを見たいコマンド名", required=False)]
-#    )
-    async def admin_help(self, inter, command=None):
+    @app_commands.command(
+        description="管理者専用ヘルプコマンド"
+    )
+    @app_commands.guilds(*dev_guilds)
+    @app_commands.describe(command="詳しいヘルプをみたいコマンド名")
+    async def admin_help(self, inter: discord.Interaction, command: str | None = None):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
         if command is None:
@@ -36,19 +37,12 @@ class Develop(commands.Cog):
             e = discord.Embed(title="コマンドが見つかりませんでした。")
         await inter.reply(embed=e, ephemeral=True)
 
-#    @slash_commands.command(
-#        guild_ids=dev_guilds,
-#        description="管理者専用データを検索",
-#        options=[
-#            Option("table_name", "データを検索したいテーブルを選択", required=True, 
-#            choices=[
-#                dislash.OptionChoice("users", "users"),
-#                dislash.OptionChoice("item", "item")
-#            ]),
-#            Option("cid", "検索したいID", required=True)
-#        ]
-#    )
-    async def checkdata(self,inter,table_name,cid):
+    @app_commands.command(
+        description="管理者専用データを検索"
+    )
+    @app_commands.guilds(*dev_guilds)
+    @app_commands.describe(table_name="テーブル名", cid="検索するID")
+    async def checkdata(self, inter, table_name: str, cid: int):
         if not inter.author.id in self.bot.owner_ids:
             return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
         data = self.bot.db.get_table(table_name)

@@ -1,15 +1,18 @@
-print("disworld loading...")
-import discord
+# Disworld program - main
+
+import discord.ext.commands
 import os
-from discord.ext import commands
 import utils
 import keep_alive
 import data
-# mode(0=normal, 1=test, 2=special)
-mode = 1
+import core
 
-# bot settings
-s = {
+
+# mode(0=normal, 1=test, 2=special)
+mode = 0
+
+# bot object
+bot = core.Bot(**{
     "command_prefix": "g2." if mode else "g.",
     "owner_ids": [
         693025129806037003, #yaakiyu
@@ -21,41 +24,25 @@ s = {
     ],
     "help_command": None,
     "activity":discord.Game("help: g.help")
-}
-# bot object
-bot = commands.Bot(**s)
+})
 bot.db = utils.EasyDB("disworld.db")
 
 #data set
-bot.version = data.version
+bot.version = core.__version__
+bot.version_info = core.version_info
 bot.storydata = data.storydata
 bot.talkdata = data.talkdata
 bot.commandsdata = data.commandsdata
 bot.fielddata = data.fielddata
 bot.itemdata = data.itemdata
 
-def prrint(*args, **kwargs):
-    args = [a for a in args] + ["\033[0m"]
-    kwargs["sep"] = ""
-    if kwargs.get("mode"):
-        args = [f"\033[0m[\033[92m{kwargs.get('mode')}\033[0m]\033[93m"] + args
-        del kwargs["mode"]
-    print("[SystemLog]\033[93m", *args, **kwargs)
-bot.print = prrint
-del prrint, data
+del data
 
-@bot.event
-async def on_ready():
-    # loading first cog
-    if mode != 2:
-        await bot.load_extension("cogs._first")
-    else:
-        await bot.load_extension("cogs._special")
-    bot.dispatch("full_ready")
 
 # run
 keep_alive.keep_alive()
 bot.print(f"running mode {mode}...", mode="special")
+
 if mode == 0:
     bot.run(os.getenv("TOKEN"))
 elif mode in [1, 2]:
