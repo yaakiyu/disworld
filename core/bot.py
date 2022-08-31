@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from discord.ext import commands
+import discord
 from aiohttp import ClientSession
 
 
 class Bot(commands.Bot):
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault("intents", discord.Intents.all())
         super().__init__(*args, **kwargs)
         self._session: ClientSession | None = None
         self.mode: int = 0

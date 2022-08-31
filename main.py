@@ -1,6 +1,6 @@
 # Disworld program - main
 
-import discord.ext.commands
+import discord
 import os
 import utils
 import keep_alive

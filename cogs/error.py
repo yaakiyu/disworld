@@ -42,7 +42,7 @@ class Error(commands.Cog):
             embed.description = f"必要な引数({e.param})が足りません。"
         else:
             traceback.print_exception(type(e), e, e.__traceback__)
-            error_msg = "\n```py\n" + "".join(
+            error_msg = "```py\n" + "".join(
                 traceback.format_exception(type(e), e,
                                            e.__traceback__)) + "\n```"
             await self.bot.get_channel(814830540133498920).send(
@@ -51,7 +51,7 @@ class Error(commands.Cog):
                     発生ユーザー：{ctx.author}(ID:{ctx.author.id})
                     発生コマンド：{ctx.command.name}(`{ctx.message.content}`)""",
                 embed=discord.Embed(title="エラー詳細",
-                                    description=f"```{error_msg}```"))
+                                    description=f"{error_msg}"))
             return await ctx.send(embed=discord.Embed(title="予期せぬエラーが発生しました",
                                                       description=error_msg +
                                                       "開発者に報告してください。"))

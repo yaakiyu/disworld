@@ -25,7 +25,7 @@ class First(commands.Cog):
                     count += 1
                     traceback.print_exc()
         self.bot.print(
-            f"all {len(allcogs)} cogs"
+            f"all {len(allcogs)} cogs "
             f"{'successfully ' if not count else ''}loaded"
             f"{f' and {count} cog(s) gave an error' if count else ''}.",
             mode="first"

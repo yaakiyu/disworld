@@ -1,3 +1,7 @@
+# RT - develop
+
+from typing import Optional
+
 from discord.ext import commands
 from discord import app_commands
 import discord
@@ -13,20 +17,27 @@ class Develop(commands.Cog):
     )
     @app_commands.guilds(*dev_guilds)
     @app_commands.describe(content="実行するSQL文")
-    async def db(self, inter, content):
-        if inter.author.id in self.bot.owner_ids:
-            await inter.reply("結果:" + str(self.bot.db.do(content)), ephemeral=True)
+    async def db(self, interaction, content: str):
+        if interaction.author.id in self.bot.owner_ids:
+            await interaction.response.send_message(
+                "結果:" + str(self.bot.db.do(content)), ephemeral=True
+            )
         else:
-            await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
+            await interaction.response.send_message(
+                "あなたはこのコマンドを実行する権限がありません。", ephemeral=True
+            )
 
     @app_commands.command(
         description="管理者専用ヘルプコマンド"
     )
     @app_commands.guilds(*dev_guilds)
     @app_commands.describe(command="詳しいヘルプをみたいコマンド名")
-    async def admin_help(self, inter: discord.Interaction, command: str | None = None):
+    async def admin_help(
+        self, inter: discord.Interaction,
+        command: Optional[str] = None
+    ):
         if not inter.author.id in self.bot.owner_ids:
-            return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
+            return await inter.response.send_message("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
         if command is None:
             e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。\ncheckdataコマンド：データベースからIDで検索します。\nreload_dataコマンド：コマンドやストーリーなどのデータを再読込みします。")
         elif command == "db":
@@ -35,7 +46,7 @@ class Develop(commands.Cog):
             e = discord.Embed(title="checkdataコマンドの詳細", description="`checkdata [テーブル名] [ID]`で検索できます。idカラムが存在しないテーブルは対応していません。")
         else:
             e = discord.Embed(title="コマンドが見つかりませんでした。")
-        await inter.reply(embed=e, ephemeral=True)
+        await inter.response.send_message(embed=e, ephemeral=True)
 
     @app_commands.command(
         description="管理者専用データを検索"
