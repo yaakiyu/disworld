@@ -37,13 +37,27 @@ class Develop(commands.Cog):
         command: Optional[str] = None
     ):
         if not inter.author.id in self.bot.owner_ids:
-            return await inter.response.send_message("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
+            return await inter.response.send_message(
+                "あなたはこのコマンドを実行する権限がありません。", ephemeral=True
+            )
         if command is None:
-            e = discord.Embed(title="help", description="dbコマンド：データベースを操作します。\ncheckdataコマンド：データベースからIDで検索します。\nreload_dataコマンド：コマンドやストーリーなどのデータを再読込みします。")
+            e = discord.Embed(
+                title="help", 
+                description="dbコマンド：データベースを操作します。\n"
+                "checkdataコマンド：データベースからIDで検索します。\n"
+                "reload_dataコマンド：コマンドやストーリーなどのデータを再読込みします。"
+            )
         elif command == "db":
-            e = discord.Embed(title="dbコマンドの詳細", description="SQL構文でデータベースを操作します。")
+            e = discord.Embed(
+                title="dbコマンドの詳細",
+                description="SQL構文でデータベースを操作します。"
+            )
         elif command == "checkdata":
-            e = discord.Embed(title="checkdataコマンドの詳細", description="`checkdata [テーブル名] [ID]`で検索できます。idカラムが存在しないテーブルは対応していません。")
+            e = discord.Embed(
+                title="checkdataコマンドの詳細",
+                description="`checkdata [テーブル名] [ID]`で検索できます。"
+                "idカラムが存在しないテーブルは対応していません。"
+            )
         else:
             e = discord.Embed(title="コマンドが見つかりませんでした。")
         await inter.response.send_message(embed=e, ephemeral=True)

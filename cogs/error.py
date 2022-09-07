@@ -50,11 +50,17 @@ class Error(commands.Cog):
                     発生チャンネル：{ctx.channel.name}(ID:{ctx.channel.id})
                     発生ユーザー：{ctx.author}(ID:{ctx.author.id})
                     発生コマンド：{ctx.command.name}(`{ctx.message.content}`)""",
-                embed=discord.Embed(title="エラー詳細",
-                                    description=f"{error_msg}"))
-            return await ctx.send(embed=discord.Embed(title="予期せぬエラーが発生しました",
-                                                      description=error_msg +
-                                                      "開発者に報告してください。"))
+                embed=discord.Embed(
+                    title="エラー詳細",
+                    description=f"{error_msg}"
+                )
+            )
+            return await ctx.send(
+                embed=discord.Embed(
+                    title="予期せぬエラーが発生しました",
+                    description=error_msg + "開発者に報告してください。"
+                )
+            )
         await ctx.send(embed=embed)
 
 

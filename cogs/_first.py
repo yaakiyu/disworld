@@ -24,6 +24,10 @@ class First(commands.Cog):
                 except Exception:
                     count += 1
                     traceback.print_exc()
+
+        # load additional cogs
+        await self.bot.load_extension("jishaku")
+
         self.bot.print(
             f"all {len(allcogs)} cogs "
             f"{'successfully ' if not count else ''}loaded"

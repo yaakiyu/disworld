@@ -1,4 +1,6 @@
+from discord.ext import commands
 import discord
+
 from .easydb import EasyDB
 # from .easymenu import EasyMenu, EasyButton
 from .error import ErrorEmbed, RequireFault
@@ -12,7 +14,7 @@ __all__ = [
     "data_converter"
 ]
 
-def data_converter(data:str, ctx:discord.ext.commands.Context) -> str:
+def data_converter(data:str, ctx:commands.Context) -> str:
     """dataをctxの情報をもとに変換します。
     変換できるもの
         ctx.author(.name[id])

@@ -1,6 +1,6 @@
 # Disworld core system
 
-from .bot import *
+from .bot import Bot
 
-__version__ = "0.1.1a"
-version_info = (0, 1, 1, "alpha")
+__version__ = Bot.version
+version_info = Bot.version_info

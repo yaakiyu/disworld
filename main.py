@@ -28,8 +28,6 @@ bot = core.Bot(**{
 bot.db = utils.EasyDB("disworld.db")
 
 #data set
-bot.version = core.__version__
-bot.version_info = core.version_info
 bot.storydata = data.storydata
 bot.talkdata = data.talkdata
 bot.commandsdata = data.commandsdata
