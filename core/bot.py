@@ -24,6 +24,8 @@ class Bot(commands.Bot):
 
     version: str = "0.1.1b"
     version_info: tuple[int, int, int, str] = (0, 1, 1, "beta")
+    pool: aiomysql.Pool
+
 
     @property
     def session(self):
@@ -60,14 +62,14 @@ class Bot(commands.Bot):
     ):
         if version_lock:
             if self.version == version_lock:
-                pass
+                await ctx.send("まだこのコマンドを使うことはできません。")
 
     async def execute_sql(
         self, sql: str | Callable,
         _injects: tuple | None = None, _return_type: str = "",
         **kwargs
     ):
-        "SQL文を実行します。"
+        "SQL文をMySQLにて実行します。"
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 if iscoroutinefunction(sql):
