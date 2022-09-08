@@ -2,15 +2,20 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 
+from core import Bot
+
 
 class Help(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
-    async def _help(self, ctx, command):
+    @commands.hybrid_command(name="help", description="ヘルプを表示します。")
+    @app_commands.describe(command="ヘルプを表示したいコマンド")
+    async def c_help(self, ctx, command: str | None = None):
         if not self.bot.db.users.is_in(id=ctx.author.id):
             self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, 0, 0)
         user = self.bot.db.users.search(id=ctx.author.id)[0][2]
+
         if command is None:
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
             for name, values in self.bot.commandsdata.items():
@@ -42,10 +47,6 @@ class Help(commands.Cog):
                 e.add_field(name="説明", value="コマンドが見つかりませんでした。")
         await ctx.reply(embed=e)
 
-    @commands.hybrid_command(name="help", description="ヘルプを表示します。")
-    @app_commands.describe(command="ヘルプを表示したいコマンド")
-    async def c_help(self, ctx, command: str | None = None):
-        await self._help(ctx, command)
 
     @commands.hybrid_command("info", description="botの情報を表示します。")
     async def c_info(self, ctx):
@@ -57,5 +58,5 @@ class Help(commands.Cog):
         await ctx.send(embed=e)
 
 
-async def setup(bot):
+async def setup(bot: Bot):
     await bot.add_cog(Help(bot))

@@ -13,6 +13,9 @@ import discord
 from aiohttp import ClientSession
 import aiomysql
 
+import utils
+import data
+
 
 class Bot(commands.Bot):
 
@@ -25,7 +28,20 @@ class Bot(commands.Bot):
     version: str = "0.1.1b"
     version_info: tuple[int, int, int, str] = (0, 1, 1, "beta")
     pool: aiomysql.Pool
-
+    db = utils.EasyDB("disworld.db")
+    storydata = data.storydata
+    talkdata = data.talkdata
+    commandsdata = data.commandsdata
+    fielddata = data.fielddata
+    itemdata = data.itemdata
+    owner_ids: list[int] = [
+        693025129806037003, #yaakiyu
+        696950076207005717, #DrEleven
+        705399971062612011, #hard Smoothyさん
+        575221859642114059, #mksuke123さん
+        667319675176091659, #takkunさん
+        573836903091273729 #きのたこさん
+    ]
 
     @property
     def session(self):
@@ -39,7 +55,6 @@ class Bot(commands.Bot):
             await self.load_extension("cogs._first")
         else:
             await self.load_extension("cogs._special")
-            self.dispatch("full_ready")
 
         self.print("connecting Mysql...", mode="system")
         self.pool = await aiomysql.create_pool(
@@ -50,7 +65,7 @@ class Bot(commands.Bot):
 
     def print(self, *args, **kwargs):
         args = [a for a in args] + ["\033[0m"]
-        kwargs["sep"] = ""
+        kwargs.setdefault("sep", "")
         if kwargs.get("mode"):
             args = [f"\033[0m[\033[92m{kwargs.get('mode')}\033[0m]\033[93m"] + args
             del kwargs["mode"]
@@ -60,7 +75,7 @@ class Bot(commands.Bot):
         self, ctx: commands.Context, story_number: int = -1,
         version_lock: str = ""
     ):
-        if (version_lock 
+        if (version_lock
             and self.version == version_lock
             and ctx.author.id not in self.owner_ids
         ):

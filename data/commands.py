@@ -10,18 +10,18 @@ def story_desc(storyid):
 commandsdata = {
     "help": {
         "type": "default",
-        "short": "このコマンド",
+        "short": "このコマンドです。",
         "description": "このbotで使えるコマンドについて表示します。\n`help [コマンド名]`と実行することでコマンドの詳細を表示できます。"
     },
     "info":{
         "type": "default",
-        "short": "botの情報を表示",
+        "short": "botの情報を表示します。",
         "description": "ゲームをプレイしてくれてる人などの情報を表示できます。\nゲーム本編とは関係ありません。"
     },
     "story": {
         "type": "story_special",
         "short": story_desc,
-        "description": lambda id:"このコマンドではbotのストーリーを見ることができます。このコマンドを使って、ミッションをクリアしていくことで、様々なコマンドが解放されていきます。"
+        "description": lambda _:"このコマンドではbotのストーリーを見ることができます。このコマンドを使って、ミッションをクリアしていくことで、様々なコマンドが解放されていきます。"
     },
     "talk": {
         "type": "story",
