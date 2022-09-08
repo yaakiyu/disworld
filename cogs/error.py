@@ -1,4 +1,4 @@
-# Sakura bot - Errors
+# disworld - Errors
 
 import discord
 from discord.ext import commands
