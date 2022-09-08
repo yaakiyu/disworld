@@ -1,15 +1,17 @@
+# disworld utilities
+
 from discord.ext import commands
-import discord
 
 from .easydb import EasyDB
-# from .easymenu import EasyMenu, EasyButton
+from .easymenu import EasyMenu, EasyButton, EasyView
 from .error import ErrorEmbed, RequireFault
 
 __all__ = [
     "EasyDB",
-#    "EasyMenu",
+    "EasyMenu",
+    "EasyView",
     "ErrorEmbed",
-#    "EasyButton",
+    "EasyButton",
     "RequireFault",
     "data_converter"
 ]

@@ -1,6 +1,7 @@
 from discord.ext import commands
+from discord import app_commands
 import discord
-# from dislash import slash_commands, Option
+
 
 class Help(commands.Cog):
     def __init__(self, bot):
@@ -41,18 +42,13 @@ class Help(commands.Cog):
                 e.add_field(name="説明", value="コマンドが見つかりませんでした。")
         await ctx.reply(embed=e)
 
-#    @slash_commands.command(
-#        description="このbotのヘルプ",
-#        options=[Option("command", "詳しくhelpを見たいコマンド", required=False)]
-#    )
-#    async def help(self, inter, command=None):
-#        await self._help(inter, command)
-
-    @commands.command(name="help")
-    async def c_help(self, ctx, command=None):
+    @commands.hybrid_command(name="help", description="ヘルプを表示します。")
+    @app_commands.describe(command="ヘルプを表示したいコマンド")
+    async def c_help(self, ctx, command: str | None = None):
         await self._help(ctx, command)
 
-    async def _info(self, ctx):
+    @commands.hybrid_command("info", description="botの情報を表示します。")
+    async def c_info(self, ctx):
         e = discord.Embed(title="このbotの情報", description=f"bot version:{self.bot.version}", color=0x00ff00)
         e.add_field(name="導入サーバー数", value=f"{len(self.bot.guilds)} servers")
         e.add_field(name="ユーザー数", value=f"{len(self.bot.users)} users")
@@ -60,13 +56,6 @@ class Help(commands.Cog):
         e.add_field(name="このゲームを遊んでくれている人の数", value=len(self.bot.db.users.get_all()))
         await ctx.send(embed=e)
 
-#    @slash_commands.command(description="このbotの情報")
-#    async def info(self, inter):
-#        await self._info(inter)
-    
-    @commands.command("info")
-    async def c_info(self, ctx):
-        await self._info(ctx)
 
 async def setup(bot):
     await bot.add_cog(Help(bot))

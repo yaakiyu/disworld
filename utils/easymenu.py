@@ -1,18 +1,42 @@
-"""import dislash
+# Disworld utils - easymenu
 
-def EasyMenu(name:str, description:str, **options) -> dislash.SelectMenu:
-    opt = [dislash.SelectOption(k,v) for k,v in options.items()]
-    menu = dislash.SelectMenu(
+from collections.abc import Callable
+
+import discord
+
+
+def EasyMenu(
+    name: str, description: str, *,
+    callback: Callable | None = None, **options
+) -> discord.ui.Select:
+    opt = [discord.SelectOption(label=k, description=v) for k,v in options.items()]
+    menu = discord.ui.Select(
         custom_id=name,
         placeholder=description,
         options=opt
     )
+    if callback:
+        menu.callback = callback
     return menu
 
-def EasyButton(label, id, color="green"):
-    color = getattr(dislash.ButtonStyle, color, None)
+
+def EasyButton(
+    label, id_, color="green", callback: Callable | None = None
+) -> discord.ui.Button:
+    "簡単にボタンを作ることができます。"
+    color = getattr(discord.ButtonStyle, color, None)
     if not color:
-        raise KeyError("存在しない色です。")
-    return dislash.ActionRow(
-        dislash.Button(style=color, label=label, custom_id=id)
-    )"""
+        raise ValueError("存在しない色です。")
+
+    button = discord.ui.Button(style=color, label=label, custom_id=id_)
+
+    if callback:
+        button.callback = callback
+    return button
+
+
+def EasyView(*items) -> discord.ui.View:
+    view = discord.ui.View()
+    for i in items:
+        view.add_item(i)
+    return view

@@ -2,7 +2,4 @@
 */__pycache__/
 *.db-journal
 *.db
-data/
 *.cpython
-poetry.lock
-pyproject.toml

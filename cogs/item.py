@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-# from dislash import slash_commands
 import utils
 from json import loads
 
@@ -18,7 +17,6 @@ class Item(commands.Cog):
         if userdata[2] < 5:
             return await utils.RequireFault(ctx)
         udata = loads(self.bot.db.item[ctx.author.id][0][1])
-        print(udata)
         embedpages = []
         em = discord.Embed(title="アイテム一覧", description="page:1")
         for id, count in udata.items():

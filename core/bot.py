@@ -29,7 +29,7 @@ class Bot(commands.Bot):
 
     @property
     def session(self):
-        if self._session is None or self._session.is_closed:
+        if self._session is None or self._session.closed:
             self._session = ClientSession()
         return self._session
 
@@ -60,9 +60,11 @@ class Bot(commands.Bot):
         self, ctx: commands.Context, story_number: int = -1,
         version_lock: str = ""
     ):
-        if version_lock:
-            if self.version == version_lock:
-                await ctx.send("まだこのコマンドを使うことはできません。")
+        if (version_lock 
+            and self.version == version_lock
+            and ctx.author.id not in self.owner_ids
+        ):
+            await ctx.send("まだこのコマンドを使うことはできません。")
 
     async def execute_sql(
         self, sql: str | Callable,
