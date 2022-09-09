@@ -54,8 +54,8 @@ class Item(commands.Cog):
         async def on_timeout():
             await msg.edit(components=[])
 
-    @commands.command(name="item")
-    async def c_item(self, ctx):
+    @commands.hybrid_command(description="自分の持っているアイテムの確認をします。")
+    async def item(self, ctx):
         await self._item(ctx)
 
 #    @slash_commands.command(description="自分の持っているアイテムの確認をします。")

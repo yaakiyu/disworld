@@ -1,7 +1,12 @@
+# disworld - equipment
+
+import json
+
 from discord.ext import commands
 import discord
+
 import utils
-import json
+
 
 class Equip(commands.Cog):
     def __init__(self, bot):
@@ -45,8 +50,8 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(m)]]["name"]
             e.add_field(name=namelist[i-1], value=val)
 
-    @commands.hybrid_command("equip")
-    async def c_equip(self, ctx: commands.Context, *, arg=None):
+    @commands.hybrid_command(description="装備を付け外しします。")
+    async def equip(self, ctx: commands.Context, *, arg=None):
         if self.bot.version == "0.2":
             # バージョンロック
             return await ctx.send("主人公はまだ装備の仕方を知らない...")
@@ -58,7 +63,7 @@ class Equip(commands.Cog):
             self.bot.db.equipment.add_item(ctx.author.id, 0, 0, 0, 0)
         if arg is None:
             # 装備を表示
-            await self._equiplist(ctx)
+            return await self._equiplist(ctx)
         args = arg.split()
         if args[0] == "set":
             # 装備をセット

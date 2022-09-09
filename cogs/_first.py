@@ -39,6 +39,8 @@ class First(commands.Cog):
         self.save.start()
         self.bot.print("started saving loop.", mode="first")
 
+        await self.bot.tree.sync()
+
     @tasks.loop(seconds=60)
     async def save(self):
         self.bot.db.commit()

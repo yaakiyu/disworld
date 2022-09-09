@@ -6,7 +6,9 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 
+
 dev_guilds = (discord.Object(a) for a in [699120642796028014, 794079140462460979])
+
 
 class Develop(commands.Cog):
     def __init__(self, bot):
@@ -36,7 +38,7 @@ class Develop(commands.Cog):
         self, inter: discord.Interaction,
         command: Optional[str] = None
     ):
-        if not inter.author.id in self.bot.owner_ids:
+        if not inter.user.id in self.bot.owner_ids:
             return await inter.response.send_message(
                 "あなたはこのコマンドを実行する権限がありません。", ephemeral=True
             )
@@ -67,13 +69,19 @@ class Develop(commands.Cog):
     )
     @app_commands.guilds(*dev_guilds)
     @app_commands.describe(table_name="テーブル名", cid="検索するID")
-    async def checkdata(self, inter, table_name: str, cid: int):
-        if not inter.author.id in self.bot.owner_ids:
-            return await inter.reply("あなたはこのコマンドを実行する権限がありません。", ephemeral=True)
+    async def checkdata(
+        self, inter: discord.Interaction, table_name: str, cid: int
+    ):
+        if not inter.user.id in self.bot.owner_ids:
+            return await inter.response.send_message(
+                "あなたはこのコマンドを実行する権限がありません。", ephemeral=True
+            )
         data = self.bot.db.get_table(table_name)
         if len(data[int(cid)]) == 0:
-            return await inter.reply("No data found.")
-        await inter.reply(dict(zip(data.values, data[int(cid)][0])), ephemeral=True)
+            return await inter.response.send_message("No data found.")
+        await inter.response.send_message(
+            dict(zip(data.values, data[int(cid)][0])), ephemeral=True
+        )
 
 
 async def setup(bot):
