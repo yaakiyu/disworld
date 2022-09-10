@@ -1,10 +1,14 @@
+# disworld - first
+
 from discord.ext import commands, tasks
 import traceback
 import os
 
+from core import Bot
+
 
 class First(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
     async def cog_load(self):
@@ -46,5 +50,5 @@ class First(commands.Cog):
         self.bot.db.commit()
 
 
-async def setup(bot):
+async def setup(bot: Bot):
     await bot.add_cog(First(bot))

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
+from typing import TypeVar, Any
 
 from inspect import iscoroutinefunction
 import os
@@ -15,6 +16,8 @@ import aiomysql
 
 import utils
 import data
+
+from .data_cache import CacheController
 
 
 class Bot(commands.Bot):
@@ -81,18 +84,18 @@ class Bot(commands.Bot):
         ):
             await ctx.send("まだこのコマンドを使うことはできません。")
 
+    reT = TypeVar("reT")
+
     async def execute_sql(
-        self, sql: str | Callable,
+        self, sql: str | Callable[..., reT],
         _injects: tuple | None = None, _return_type: str = "",
         **kwargs
-    ):
+    ) -> None | tuple | reT:
         "SQL文をMySQLにて実行します。"
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 if iscoroutinefunction(sql):
                     return await sql(cursor, **kwargs)
-                elif callable(sql):
-                    raise ValueError("sql parameter must be async function.")
                 await cursor.execute(sql, _injects)
                 if _return_type == "fetchall":
                     return await cursor.fetchall()
