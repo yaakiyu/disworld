@@ -6,12 +6,14 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 
+from core import Bot
+
 
 dev_guilds = (discord.Object(a) for a in [699120642796028014, 794079140462460979])
 
 
 class Develop(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
     @app_commands.command(
@@ -21,8 +23,9 @@ class Develop(commands.Cog):
     @app_commands.describe(content="実行するSQL文")
     async def db(self, interaction, content: str):
         if interaction.author.id in self.bot.owner_ids:
+            res = await self.bot.execute_sql(content, return_type="fetchall")
             await interaction.response.send_message(
-                "結果:" + str(self.bot.db.do(content)), ephemeral=True
+                f"結果: {res}", ephemeral=True
             )
         else:
             await interaction.response.send_message(
@@ -76,13 +79,14 @@ class Develop(commands.Cog):
             return await inter.response.send_message(
                 "あなたはこのコマンドを実行する権限がありません。", ephemeral=True
             )
-        data = self.bot.db.get_table(table_name)
-        if len(data[int(cid)]) == 0:
-            return await inter.response.send_message("No data found.")
+        res = await self.bot.execute_sql(
+            f"SELECT * FROM {table_name} WHERE Id = %s", (cid,),
+            return_type="fetchall"
+        )
         await inter.response.send_message(
-            dict(zip(data.values, data[int(cid)][0])), ephemeral=True
+            str(res), ephemeral=True
         )
 
 
-async def setup(bot):
+async def setup(bot: Bot):
     await bot.add_cog(Develop(bot))

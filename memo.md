@@ -27,3 +27,11 @@ help用データ。コマンドにはそれぞれtypeが存在する。　
 users: id=int, name=str, story=int, level=int, exp=int, place=int, money=int
 item: id=int, data=str
 equipment: id=int, buki=int, buki2=int, bougu=int, akusesari=int
+
+## MySQL版DBの仕様について
+User: Id=BIGINT UNSIGNED, Name=TEXT(~65535桁), Story=SMALLINT UNSIGNED(0~255)  
+    : Level=INT UNSIGNED(0~4294967295), Exp=BIGINT UNSIGNED,  
+    : Place=SMALLINT UNSIGNED, Money=INT UNSIGNED  
+Item: Id=BIGINT UNSIGNED, Data=JSON  
+Equipment: Id=BIGINT UNSIGNED, Weapon=INT UNSIGNED, Weapon2=INT UNSIGNED,  
+         : Armor=INT UNSIGNED, Accessory=INT UNSIGNED
