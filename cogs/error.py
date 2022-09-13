@@ -123,7 +123,7 @@ class ErrorQuery(commands.Cog):
                 f"なんらかのエラーが発生しました。\n`{error.original}`\n"
                 "このエラーは開発者側の問題である可能性が高いです。サポートサーバーにて報告いただけると嬉しいです。"
             )
-            channel = self.bot.get_channel(814830540133498920)
+            channel = self.bot.get_channel(794842052184506398)
 
             assert isinstance(channel, discord.TextChannel)
             error_message = "".join(
