@@ -2,8 +2,8 @@
 
 import discord
 import os
-import keep_alive
 import core
+from dotenv import load_dotenv
 
 
 # mode(0=normal, 1=test, 2=special)
@@ -13,12 +13,13 @@ mode = 0
 bot = core.Bot(**{
     "command_prefix": "g2." if mode else "g.",
     "help_command": None,
-    "activity":discord.Game("help: g.help")
+    "activity": discord.Game("help: g.help"),
+    "mode": mode
 })
 
+load_dotenv()
 
 # run
-keep_alive.keep_alive()
 bot.print(f"running mode {mode}...", mode="main")
 
 if mode == 0:

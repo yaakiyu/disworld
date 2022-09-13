@@ -24,10 +24,10 @@ class Bot(commands.Bot):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("intents", discord.Intents.all())
+        self.mode: int = kwargs.pop("mode", 0)
         super().__init__(*args, **kwargs)
         self.db = DataController(self)
         self._session: ClientSession | None = None
-        self.mode: int = 0
 
     version: str = "0.1.1b"
     version_info: tuple[int, int, int, str] = (0, 1, 1, "beta")
