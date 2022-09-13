@@ -1,7 +1,5 @@
 # disworld - equipment
 
-from collections.abc import Coroutine
-
 import json
 
 from discord.ext import commands
@@ -16,15 +14,6 @@ import utils
 class Equip(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
-
-    async def cog_load(self) -> None:
-        await self.bot.execute_sql(
-            """CREATE TABLE IF NOT EXISTS Equipment (
-                Id BIGINT PRIMARY KEY NOT NULL,
-                Weapon INT UNSIGNED, Weapon2 INT UNSIGNED,  
-                Armor INT UNSIGNED, Accessory INT UNSIGNED
-            );"""
-        )
 
     async def _equiplist(self, ctx):
         # 装備を表示する関数
@@ -81,12 +70,12 @@ class Equip(commands.Cog):
         if self.bot.version == "0.2":
             # バージョンロック
             return await ctx.send("主人公はまだ装備の仕方を知らない...")
-        if not self.bot.db.users.is_in(id=ctx.author.id):
+        if ctx.author.id not in self.bot.db.user:
             return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
-        if self.bot.db.users[ctx.author.id][0][2] < 6:
+        if self.bot.db.user[ctx.author.id][0][2] < 6:
             return await utils.RequireFault(ctx)
-        if not self.bot.db.equipment.is_in(id=ctx.author.id):
-            self.bot.db.equipment.add_item(ctx.author.id, 0, 0, 0, 0)
+        if ctx.author.id not in self.bot.db.equipment:
+            self.bot.db.equipment.insert((ctx.author.id, 0, 0, 0, 0))
         if arg is None:
             # 装備を表示
             return await self._equiplist(ctx)

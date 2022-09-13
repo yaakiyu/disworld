@@ -3,14 +3,17 @@ import discord
 # from dislash import slash_commands
 import utils
 
+from core import Bot
+
+
 class Story(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
     async def _story(self, ctx):
-        if not self.bot.db.users.is_in(id=ctx.author.id):
-            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, 0, 0)
-        userdata = self.bot.db.users.search(id=ctx.author.id)[0][2]
+        if ctx.author.id not in self.bot.db.user:
+            self.bot.db.user.insert((ctx.author.id, "", 0, 0, 0, 0, 0))
+        userdata = self.bot.db.user[ctx.author.id]["Story"]
         opt = {"エピソード1「始まらなかった話」":"1"}
         if userdata >= 2:
             opt["エピソード2「初めてのおつかい」"] = "2"
@@ -46,5 +49,5 @@ class Story(commands.Cog):
         await self._story(ctx)
 
 
-async def setup(bot):
+async def setup(bot: Bot):
     await bot.add_cog(Story(bot))

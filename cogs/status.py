@@ -6,18 +6,10 @@ class Status(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    async def _status(self, ctx):
-        udata = self.bot.db.users[ctx.author.id][0][2]
-        if udata < 6:
-            return await utils.RequireFault(ctx)
-        if udata == 6:
-            pass
+    async def _status(self, ctx: commands.Context):
+        await self.bot.lock_checker(ctx, 5, 0.2)
 
-#    @slash_commands.command(description="あなたのステータスを見ることができます")
-#    async def status(self, inter):
-#        await self._status(inter)
-
-    @commands.command(name="status", aliases=["st", "stats"])
+    @commands.hybrid_command(name="status", aliases=["st", "stats"])
     async def c_status(self, ctx):
         await self._status(ctx)
 

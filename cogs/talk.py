@@ -1,23 +1,23 @@
 from discord.ext import commands
 import discord
-# from dislash import slash_commands
+
 import utils
+from core import Bot
+
 
 class Talk(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
     async def _talk(self, ctx):
-        if not self.bot.db.users.is_in(id=ctx.author.id):
-            return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
-        if (udata:=self.bot.db.users[ctx.author.id][0][2]) < 1:
-            return await utils.RequireFault(ctx)
+        await self.bot.lock_checker(ctx, 6)
+        udata = self.bot.db.user[ctx.author.id]["Story"]
         if udata <= 2:
             opt = {"老人":"1"}
         else:
             opt = {}
         if opt == {}:
-            return await ctx.send(embed=util.ErrorEmbed("エラー", "現在話せる相手がいません！"))
+            return await ctx.send(embed=utils.ErrorEmbed("エラー", "現在話せる相手がいません！"))
         e = discord.Embed(title="talk - 選択", description="誰と話すか決めてください。")
         menu = utils.EasyMenu("話し相手", "選択してください", **opt)
         msg = await ctx.send(embed=e, components=[menu])
@@ -25,8 +25,8 @@ class Talk(commands.Cog):
 
         if label:=int(inter.select_menu.selected_options[0].value) == 1:
             talk = self.bot.talkdata["1"]["ja"]
-            if self.bot.db.users[ctx.author.id][0][2] == 1:
-                self.bot.db.users.update_item(f"id={ctx.author.id}", story=2)
+            if self.bot.db.user[ctx.author.id]["Story"] == 1:
+                self.bot.db.user[ctx.author.id]["Story"] = 2
             e = discord.Embed(title="老人に話しかけた。",description=utils.data_converter(talk, ctx))
         await msg.edit(embed=e,components=[])
 

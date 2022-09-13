@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar, Any
+from typing import TypeVar
 
 from inspect import iscoroutinefunction
 import os
@@ -14,10 +14,10 @@ import discord
 from aiohttp import ClientSession
 import aiomysql
 
-import utils
 import data
+import utils
 
-from .data_cache import CacheController
+from .data_cache import DataController
 
 
 class Bot(commands.Bot):
@@ -25,13 +25,15 @@ class Bot(commands.Bot):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("intents", discord.Intents.all())
         super().__init__(*args, **kwargs)
+        self.db = DataController(self)
         self._session: ClientSession | None = None
         self.mode: int = 0
 
     version: str = "0.1.1b"
     version_info: tuple[int, int, int, str] = (0, 1, 1, "beta")
+    version_number: float = 0.1
     pool: aiomysql.Pool
-    db = utils.EasyDB("disworld.db")
+    db: DataController
     storydata = data.storydata
     talkdata = data.talkdata
     commandsdata = data.commandsdata
@@ -48,17 +50,12 @@ class Bot(commands.Bot):
 
     @property
     def session(self):
+        "セッションを返す。"
         if self._session is None or self._session.closed:
             self._session = ClientSession()
         return self._session
 
     async def setup_hook(self):
-        # loading first cog
-        if self.mode != 2:
-            await self.load_extension("cogs._first")
-        else:
-            await self.load_extension("cogs._special")
-
         self.print("connecting Mysql...", mode="system")
         self.pool = await aiomysql.create_pool(
             host=os.environ["MYSQL_HOST"], port=int(os.environ["MYSQL_PORT"]),
@@ -66,7 +63,14 @@ class Bot(commands.Bot):
             db=os.environ["MYSQL_DBNAME"], loop=self.loop, autocommit=True
         )
 
+        # load first cog
+        if self.mode != 2:
+            await self.load_extension("cogs._first")
+        else:
+            await self.load_extension("cogs._special")
+
     def print(self, *args, **kwargs):
+        "Botの情報をコンソールに出力します。modeキーワード引数があるとそれも考慮します。"
         args = [a for a in args] + ["\033[0m"]
         kwargs.setdefault("sep", "")
         if kwargs.get("mode"):
@@ -76,13 +80,31 @@ class Bot(commands.Bot):
 
     async def lock_checker(
         self, ctx: commands.Context, story_number: int = -1,
-        version_lock: str = ""
+        version_lock: float = 0.0
     ):
-        if (version_lock
-            and self.version == version_lock
+        "ユーザーがコマンドを使えるかどうかを判定します。"
+        if (
+            version_lock
+            and self.version_number > version_lock
             and ctx.author.id not in self.owner_ids
         ):
-            await ctx.send("まだこのコマンドを使うことはできません。")
+            return await ctx.send(embed=utils.ErrorEmbed(
+                "エラー",
+                "まだこのコマンドは研究段階です。もうしばらく待ってください..."
+            ))
+        if ctx.author.id not in self.db.user:
+            return await ctx.send(embed=utils.ErrorEmbed(
+                "エラー",
+                "あなたはゲームを始めていません！storyコマンドでゲームを開始してください！"
+            ))
+        if (
+            story_number != -1
+            and self.db.user[ctx.author.id]["Story"] < story_number
+        ):
+            return await ctx.send(embed=utils.ErrorEmbed(
+                "エラー",
+                "あなたはまだこのコマンドを使う条件を満たしていないようです..."
+            ))
 
     reT = TypeVar("reT")
 

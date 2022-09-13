@@ -1,19 +1,20 @@
 from discord.ext import commands
 import discord
-# from dislash import slash_commands
 import utils
 import json
 
+from core import Bot
+
+
 class Shop(commands.Cog):
-    def __init__(self, bot):
+    def __init__(self, bot: Bot):
         self.bot = bot
 
-    async def _shop(self, ctx):
-        if not self.bot.db.users.is_in(id=ctx.author.id):
-            return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
-        if (udata:=self.bot.db.users.search(id=ctx.author.id)[0][2]) < 3:
-            return await utils.RequireFault(ctx)
+    @commands.hybrid_command(name="shop")
+    async def c_shop(self, ctx):
+        await self.bot.lock_checker(ctx, 3)
 
+        udata = self.bot.db.user[ctx.author.id]["Story"]
         if udata == 3:
             # チュートリアル
             await self.tutorial(ctx)
@@ -21,9 +22,9 @@ class Shop(commands.Cog):
             if self.bot.version == "0.2":
                 # バージョンロック
                 return await ctx.send("開店準備中...")
-            udata = self.bot.db.users[ctx.author.id][0]
-            uitem = json.loads(self.bot.db.item[ctx.author.id][0][1])
-            places = [p for p in self.bot.placedata if p["visit"] < udata[2]]
+            udata = self.bot.db.user[ctx.author.id]
+            uitem = json.loads(self.bot.db.item[ctx.author.id][1])
+            places = [p for p in self.bot.fielddata if p["visit"] < udata[2]]
             shops = [x for s in places for x in s["shop"]]
             msg = await ctx.send(
                 embed=discord.Embed(
@@ -33,7 +34,7 @@ class Shop(commands.Cog):
                 components=[utils.EasyMenu(
                     "お店を選択", 
                     "行きたいお店を選択してください。",
-                    **{s["name"]:str(n) for n, p in enumerate(shops)}
+                    **{s["name"]:str(n) for n, s in enumerate(shops)}
                 )]
             )
             inter = await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
@@ -42,15 +43,15 @@ class Shop(commands.Cog):
             embed = discord.Embed(title=selected["name"], description="買いたいアイテムを選択してください。")
             for ite in selling_items:
                 if ite["type"] == "weapon":
-                    e.add_field(
+                    embed.add_field(
                         name=ite["name"],
                         value=f"種類：武器 攻撃力：{ite['attack']} 価格：{ite['money']}")
                 elif ite["type"] == "armour":
-                    e.add_field(
+                    embed.add_field(
                         name=ite["name"],
                         value=f"種類：防具 防御力：{ite['block']} 価格：{ite['money']}")
                 elif ite["type"] == "useful":
-                    e.add_field(
+                    embed.add_field(
                         name=ite["name"],
                         value=f"種類：便利アイテム 効果：{ite['effect']} 価格：{ite['money']}")
             menu = {m["name"]:n for n, m in enumerate(selling_items)}
@@ -70,10 +71,10 @@ class Shop(commands.Cog):
             else:
                 uitem[str(itemid)] += 1
             # itemテーブルへ書き込み
-            self.bot.db.item.update_item(f"id={ctx.author.id}", data=json.dumps(uitem))
+            self.bot.db.item[ctx.author.id]["Data"] = json.dumps(uitem)
             udata[6] -= selected["money"]
             # moneyを減らしてusersテーブルへ書き込み
-            self.bot.db.users.update_item(f"id={ctx.author.id}", money=udata[6])
+            self.bot.db.user[ctx.author.id]["Money"] = udata[6]
             await msg.edit(
                 embed=discord.Embed(
                     title="成功",
@@ -81,14 +82,6 @@ class Shop(commands.Cog):
                 ),
                 components=[]
             )
-
-#    @slash_commands.command(description="お買い物をします。")
-#    async def shop(self, inter):
-#        await self._shop(inter)
-
-    @commands.command(name="shop")
-    async def c_shop(self, ctx):
-        await self._shop(ctx)
 
     async def tutorial(self, ctx):
         e = discord.Embed(title="ショップ - チュートリアル", description="お店へようこそ！案内人のマスダです！\nこの街には1個のお店が存在するようですね...\nセーフィ生活店というところに行ってみましょう！")
@@ -100,13 +93,13 @@ class Shop(commands.Cog):
         await msg.edit(components=[])
         msg = await ctx.send(embed=e, components=[menu])
         await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
-        if not self.bot.db.item.is_in(user=ctx.author.id):
+        if ctx.author.id not in self.bot.db.item:
             data = json.dumps({"0":1})
-            self.bot.db.item.add_item(ctx.author.id, data)
+            self.bot.db.item.insert((ctx.author.id, data))
         e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
         await msg.edit(embed=e, components=[])
-        self.bot.db.users.update_item(f"id={ctx.author.id}", story=4)
+        self.bot.db.user[ctx.author.id]["Story"] = 4
 
 
-async def setup(bot):
+async def setup(bot: Bot):
     await bot.add_cog(Shop(bot))

@@ -25,7 +25,7 @@ class First(commands.Cog):
                     self.bot.print(
                         f"loaded cogs.{file_name}", mode="first"
                     )
-                except Exception:
+                except:
                     count += 1
                     traceback.print_exc()
 
@@ -39,15 +39,29 @@ class First(commands.Cog):
             mode="first"
         )
 
-        # saving loop
-        self.save.start()
-        self.bot.print("started saving loop.", mode="first")
+        # create tables
+        await self.bot.execute_sql(
+            """CREATE TABLE IF NOT EXISTS Equipment (
+                Id BIGINT PRIMARY KEY NOT NULL,
+                Weapon INT UNSIGNED, Weapon2 INT UNSIGNED,
+                Armor INT UNSIGNED, Accessory INT UNSIGNED
+            );"""
+        )
+        await self.bot.execute_sql(
+            """CREATE TABLE IF NOT EXISTS User (
+                Id BIGINT UNSIGNED, Name TEXT, Story SMALLINT UNSIGNED,
+                Level INT UNSIGNED, Exp BIGINT UNSIGNED,
+                Place SMALLINT UNSIGNED, Money INT UNSIGNED
+            );"""
+        )
+        await self.bot.execute_sql(
+            "CREATE TABLE IF NOT EXISTS Item(Id BIGINT UNSIGNED, Data JSON);"
+        )
+
+        await self.bot.db.async_setup()
 
         await self.bot.tree.sync()
 
-    @tasks.loop(seconds=60)
-    async def save(self):
-        self.bot.db.commit()
 
 
 async def setup(bot: Bot):

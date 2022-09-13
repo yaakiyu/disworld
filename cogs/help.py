@@ -12,9 +12,9 @@ class Help(commands.Cog):
     @commands.hybrid_command(name="help", description="ヘルプを表示します。")
     @app_commands.describe(command="ヘルプを表示したいコマンド")
     async def c_help(self, ctx, command: str | None = None):
-        if not self.bot.db.users.is_in(id=ctx.author.id):
-            self.bot.db.users.add_item(ctx.author.id, "", 0, 0, 0, 0, 0)
-        user = self.bot.db.users.search(id=ctx.author.id)[0][2]
+        if ctx.author.id not in self.bot.db.user:
+            self.bot.db.user.insert((ctx.author.id, "", 0, 0, 0, 0, 0))
+        user = self.bot.db.user[ctx.author.id]["Story"]
 
         if command is None:
             e = discord.Embed(title="Help", description="このbotのコマンドの紹介。")
@@ -47,14 +47,13 @@ class Help(commands.Cog):
                 e.add_field(name="説明", value="コマンドが見つかりませんでした。")
         await ctx.reply(embed=e)
 
-
     @commands.hybrid_command("info", description="botの情報を表示します。")
     async def c_info(self, ctx):
         e = discord.Embed(title="このbotの情報", description=f"bot version:{self.bot.version}", color=0x00ff00)
         e.add_field(name="導入サーバー数", value=f"{len(self.bot.guilds)} servers")
         e.add_field(name="ユーザー数", value=f"{len(self.bot.users)} users")
         e.add_field(name="チャンネル数", value=f"{len(list(self.bot.get_all_channels()))} channels")
-        e.add_field(name="このゲームを遊んでくれている人の数", value=len(self.bot.db.users.get_all()))
+        e.add_field(name="このゲームを遊んでくれている人の数", value=len(self.bot.db.user.data))
         await ctx.send(embed=e)
 
 
