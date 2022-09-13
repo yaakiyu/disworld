@@ -40,12 +40,13 @@ class Bot(commands.Bot):
     fielddata = data.fielddata
     itemdata = data.itemdata
     owner_ids: list[int] = [
-        693025129806037003, #yaakiyu
-        696950076207005717, #DrEleven
-        705399971062612011, #hard Smoothyさん
-        575221859642114059, #mksuke123さん
-        667319675176091659, #takkunさん
-        573836903091273729 #きのたこさん
+        693025129806037003,  # yaakiyu
+        696950076207005717,  # DrEleven
+        705399971062612011,  # hard Smoothyさん
+        575221859642114059,  # mksuke123さん
+        667319675176091659,  # takkunさん
+        573836903091273729,  # きのたこさん
+        884692310166761504,  # mc_fdcさん
     ]
 
     @property
