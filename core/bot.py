@@ -39,15 +39,7 @@ class Bot(commands.Bot):
     commandsdata = data.commandsdata
     fielddata = data.fielddata
     itemdata = data.itemdata
-    owner_ids: list[int] = [
-        693025129806037003,  # yaakiyu
-        696950076207005717,  # DrEleven
-        705399971062612011,  # hard Smoothyさん
-        575221859642114059,  # mksuke123さん
-        667319675176091659,  # takkunさん
-        573836903091273729,  # きのたこさん
-        884692310166761504,  # mc_fdcさん
-    ]
+    owner_ids: list[int]
 
     @property
     def session(self):
@@ -69,6 +61,17 @@ class Bot(commands.Bot):
             await self.load_extension("cogs._first")
         else:
             await self.load_extension("cogs._special")
+
+    async def on_ready(self):
+        self.owner_ids = [
+            693025129806037003,  # yaakiyu
+            696950076207005717,  # DrEleven
+            705399971062612011,  # hard Smoothyさん
+            575221859642114059,  # mksuke123さん
+            667319675176091659,  # takkunさん
+            573836903091273729,  # きのたこさん
+            884692310166761504,  # mc_fdcさん
+        ]
 
     def print(self, *args, **kwargs):
         "Botの情報をコンソールに出力します。modeキーワード引数があるとそれも考慮します。"
