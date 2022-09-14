@@ -1,7 +1,9 @@
+# disworld - shop
+
 from discord.ext import commands
 import discord
 import utils
-import json
+import orjson
 
 from core import Bot
 
@@ -23,7 +25,7 @@ class Shop(commands.Cog):
                 # バージョンロック
                 return await ctx.send("開店準備中...")
             udata = self.bot.db.user[ctx.author.id]
-            uitem = json.loads(self.bot.db.item[ctx.author.id][1])
+            uitem = orjson.loads(self.bot.db.item[ctx.author.id][1])
             places = [p for p in self.bot.fielddata if p["visit"] < udata[2]]
             shops = [x for s in places for x in s["shop"]]
             msg = await ctx.send(
@@ -71,7 +73,7 @@ class Shop(commands.Cog):
             else:
                 uitem[str(itemid)] += 1
             # itemテーブルへ書き込み
-            self.bot.db.item[ctx.author.id]["Data"] = json.dumps(uitem)
+            self.bot.db.item[ctx.author.id]["Data"] = orjson.dumps(uitem)
             udata[6] -= selected["money"]
             # moneyを減らしてusersテーブルへ書き込み
             self.bot.db.user[ctx.author.id]["Money"] = udata[6]
@@ -94,7 +96,7 @@ class Shop(commands.Cog):
         msg = await ctx.send(embed=e, components=[menu])
         await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
         if ctx.author.id not in self.bot.db.item:
-            data = json.dumps({"0":1})
+            data = orjson.dumps({"0":1})
             self.bot.db.item.insert((ctx.author.id, data))
         e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
         await msg.edit(embed=e, components=[])

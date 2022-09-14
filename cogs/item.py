@@ -1,7 +1,9 @@
+# disworld - item
+
 import discord
 from discord.ext import commands
 import utils
-from json import loads
+from orjson import loads
 
 from core import Bot
 

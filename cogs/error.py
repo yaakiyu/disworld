@@ -1,4 +1,4 @@
-# disworld - Errors
+# disworld - error detection
 
 import discord
 from discord.ext import commands

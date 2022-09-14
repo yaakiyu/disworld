@@ -1,6 +1,7 @@
+# disworld - status
+
 from discord.ext import commands
-# from dislash import slash_commands
-import utils
+
 
 class Status(commands.Cog):
     def __init__(self, bot):

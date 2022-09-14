@@ -1,6 +1,6 @@
 # disworld - first
 
-from discord.ext import commands, tasks
+from discord.ext import commands
 import traceback
 import os
 
