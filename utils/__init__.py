@@ -2,16 +2,15 @@
 
 from discord.ext import commands
 
-from .easydb import EasyDB
-from .easymenu import EasyMenu, EasyButton, EasyView
+from .easymenu import EasyMenu, EasyButton, EasyView, EasyOption
 from .error import ErrorEmbed, RequireFault
 
 __all__ = [
-    "EasyDB",
     "EasyMenu",
     "EasyView",
     "ErrorEmbed",
     "EasyButton",
+    "EasyOption",
     "RequireFault",
     "data_converter"
 ]

@@ -1,11 +1,9 @@
 # disworld - equipment
 
-import json
+from orjson import loads
 
 from discord.ext import commands
 import discord
-
-import aiomysql
 
 from core import Bot
 import utils
@@ -17,19 +15,8 @@ class Equip(commands.Cog):
 
     async def _equiplist(self, ctx):
         # 装備を表示する関数
-        async def _sql(cursor: aiomysql.Cursor) -> tuple[tuple, tuple]:
-            await cursor.execute(
-                "SELECT * FROM Equipment WHERE Id = %s",
-                (ctx.author.id,)
-            )
-            equi = await cursor.fetchall()
-            await cursor.execute(
-                "SELECT * FROM Item WHERE Id = %s",
-                (ctx.author.id,)
-            )
-            return (equi, await cursor.fetchall())
-
-        (u_equip, u_item) = await self.bot.execute_sql(_sql)  # type: ignore
+        u_equip = self.bot.db.equipment[ctx.author.id]
+        u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
 
         embed = discord.Embed(title="あなたの装備一覧", description=" ")
         namelist = ["武器", "武器2", "防具", "アクセサリ"]
@@ -41,8 +28,8 @@ class Equip(commands.Cog):
 
     async def _equipset(self, ctx, args: list[str]):
         # 装備するものを選択する関数
-        u_equip = self.bot.db.equipment[ctx.author.id][0]
-        u_item = json.loads(self.bot.db.item[ctx.author.id][0][1])
+        u_equip = self.bot.db.equipment[ctx.author.id]
+        u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
         e = discord.Embed(title="変更する装備を選んでください", description=" ")
         menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
         namelist = ["武器", "武器2", "防具", "アクセサリ"]
@@ -54,8 +41,8 @@ class Equip(commands.Cog):
 
     async def _equiprm(self, ctx, args: list[str]):
         # 装備を削除するものを選択する関数
-        u_equip = self.bot.db.equipment[ctx.author.id][0]
-        u_item = json.loads(self.bot.db.item[ctx.author.id][0][1])
+        u_equip = self.bot.db.equipment[ctx.author.id]
+        u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
         e = discord.Embed(title="削除する装備を選んでください", description=" ")
         menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
         namelist = ["武器", "武器2", "防具", "アクセサリ"]
@@ -67,13 +54,8 @@ class Equip(commands.Cog):
 
     @commands.hybrid_command(description="装備を付け外しします。")
     async def equip(self, ctx: commands.Context, *, arg=None):
-        if self.bot.version == "0.2":
-            # バージョンロック
-            return await ctx.send("主人公はまだ装備の仕方を知らない...")
-        if ctx.author.id not in self.bot.db.user:
-            return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
-        if self.bot.db.user[ctx.author.id][0][2] < 6:
-            return await utils.RequireFault(ctx)
+        await self.bot.lock_checker(ctx, 6, 0.2)
+
         if ctx.author.id not in self.bot.db.equipment:
             self.bot.db.equipment.insert((ctx.author.id, 0, 0, 0, 0))
         if arg is None:

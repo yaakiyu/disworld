@@ -7,6 +7,14 @@ from collections.abc import Callable
 import discord
 
 
+def EasyOption(**options) -> list[discord.SelectOption]:
+    "discord.SelectOptionのリストを辞書から生成します。"
+    return [
+        discord.SelectOption(label=k, description=v)
+        for k, v in options.items()
+    ]
+
+
 def EasyMenu(
     name: str, description: str, *,
     callback: Optional[Callable] = None, **options
