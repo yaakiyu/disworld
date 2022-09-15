@@ -4,3 +4,4 @@
 *.db
 *.cpython
 .env
+venv
