@@ -38,8 +38,9 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(m)]]["name"]
             e.add_field(name=namelist[i-1], value=val)
 
-    async def _equiplist(self, ctx):
-        # 装備を表示する関数
+    @equip.command("list",
+        description="現在の装備を確認します。", aliases=["view"])
+    async def _equip_list(self, ctx):
         u_equip = self.bot.db.equipment[ctx.author.id]
         u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
 
@@ -51,7 +52,8 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(equip)]]["name"]
             embed.add_field(name=namelist[n-1], value=val)
 
-    async def _equipset(self, ctx, args: list[str]):
+    @equip.command("set", description="装備をします。", aliases=["equip"])
+    async def _equip_set(self, ctx, args: list[str]):
         # 装備するものを選択する関数
         u_equip = self.bot.db.equipment[ctx.author.id]
         u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
@@ -64,20 +66,6 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(m)]]["name"]
             e.add_field(name=namelist[i-1], value=val)
 
-"""        if arg is None:
-            # 装備を表示
-            return await self._equiplist(ctx)
-        args = arg.split()
-        if args[0] == "set":
-            # 装備をセット
-            await self._equipset(ctx, args)
-        if args[0] in ["view", "list"]:
-            # 装備を表示
-            await self._equiplist(ctx)
-        if args[0] in :
-            # 装備を解除
-            await self._equiprm(ctx, args)
-"""
 
 async def setup(bot: Bot):
     await bot.add_cog(Equip(bot))
