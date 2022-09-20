@@ -3,7 +3,7 @@
 from discord.ext import commands
 
 from .easymenu import EasyMenu, EasyButton, EasyView, EasyOption
-from .error import ErrorEmbed, RequireFault
+from .error import SpecialError, ErrorEmbed, RequireFault
 
 __all__ = [
     "EasyMenu",
@@ -11,6 +11,7 @@ __all__ = [
     "ErrorEmbed",
     "EasyButton",
     "EasyOption",
+    "SpecialError",
     "RequireFault",
     "data_converter"
 ]

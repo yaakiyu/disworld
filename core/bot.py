@@ -92,23 +92,26 @@ class Bot(commands.Bot):
             and self.version_number > version_lock
             and ctx.author.id not in self.owner_ids
         ):
-            return await ctx.send(embed=utils.ErrorEmbed(
+            await ctx.send(embed=utils.ErrorEmbed(
                 "エラー",
                 "まだこのコマンドは研究段階です。もうしばらく待ってください..."
             ))
+            raise utils.SpecialError
         if ctx.author.id not in self.db.user:
-            return await ctx.send(embed=utils.ErrorEmbed(
+            await ctx.send(embed=utils.ErrorEmbed(
                 "エラー",
                 "あなたはゲームを始めていません！storyコマンドでゲームを開始してください！"
             ))
+            raise utils.SpecialError()
         if (
             story_number != -1
             and self.db.user[ctx.author.id]["Story"] < story_number
         ):
-            return await ctx.send(embed=utils.ErrorEmbed(
+            await ctx.send(embed=utils.ErrorEmbed(
                 "エラー",
                 "あなたはまだこのコマンドを使う条件を満たしていないようです..."
             ))
+            raise utils.SpecialError()
 
     reT = TypeVar("reT")
 

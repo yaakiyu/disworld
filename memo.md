@@ -24,11 +24,6 @@ help用データ。コマンドにはそれぞれtypeが存在する。　
 - story_special ストーリー進行によって表示内容が変わるコマンド。shortやdescriptionにストーリー進行度を引数にとる関数を渡す。
 
 ## DBの仕様について
-users: id=int, name=str, story=int, level=int, exp=int, place=int, money=int
-item: id=int, data=str
-equipment: id=int, buki=int, buki2=int, bougu=int, akusesari=int
-
-## MySQL版DBの仕様について
 User: Id=BIGINT UNSIGNED, Name=TEXT(~65535桁), Story=SMALLINT UNSIGNED(0~255)  
     : Level=INT UNSIGNED(0~4294967295), Exp=BIGINT UNSIGNED,  
     : Place=SMALLINT UNSIGNED, Money=INT UNSIGNED  

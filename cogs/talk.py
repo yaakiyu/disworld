@@ -18,6 +18,7 @@ class TalkView(discord.ui.View):
 
     @discord.ui.select(
         placeholder="選択してください...",
+        options=[]
     )
     async def story_select(
         self, inter: discord.Interaction, select: discord.ui.Select

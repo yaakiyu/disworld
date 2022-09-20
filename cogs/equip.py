@@ -13,6 +13,31 @@ class Equip(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
 
+    @commands.hybrid_group(description="装備を付け外しします。")
+    async def equip(self, ctx: commands.Context):
+        await self.bot.lock_checker(ctx, 6, 0.2)
+
+        if ctx.author.id not in self.bot.db.equipment:
+            self.bot.db.equipment.insert((ctx.author.id, 0, 0, 0, 0))
+        
+        if not ctx.invoked_subcommand:
+            await ctx.send("使い方が違います。")
+
+    @equip.command("remove", description="装備を解除します。", aliases=[
+        "del", "rm", "lift", "delete", "takeoff", "unset", "unequip"
+    ])
+    async def _equip_rm(self, ctx: commands.Context):
+        u_equip = self.bot.db.equipment[ctx.author.id]
+        u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
+        e = discord.Embed(title="削除する装備を選んでください", description=" ")
+        menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
+        namelist = ["武器", "武器2", "防具", "アクセサリ"]
+        for i, m in enumerate(u_equip):
+            if i == 0 or m == 0:
+                continue
+            val = self.bot.itemdata[u_item[str(m)]]["name"]
+            e.add_field(name=namelist[i-1], value=val)
+
     async def _equiplist(self, ctx):
         # 装備を表示する関数
         u_equip = self.bot.db.equipment[ctx.author.id]
@@ -39,26 +64,7 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(m)]]["name"]
             e.add_field(name=namelist[i-1], value=val)
 
-    async def _equiprm(self, ctx, args: list[str]):
-        # 装備を削除するものを選択する関数
-        u_equip = self.bot.db.equipment[ctx.author.id]
-        u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
-        e = discord.Embed(title="削除する装備を選んでください", description=" ")
-        menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
-        namelist = ["武器", "武器2", "防具", "アクセサリ"]
-        for i, m in enumerate(u_equip):
-            if i == 0 or m == 0:
-                continue
-            val = self.bot.itemdata[u_item[str(m)]]["name"]
-            e.add_field(name=namelist[i-1], value=val)
-
-    @commands.hybrid_command(description="装備を付け外しします。")
-    async def equip(self, ctx: commands.Context, *, arg=None):
-        await self.bot.lock_checker(ctx, 6, 0.2)
-
-        if ctx.author.id not in self.bot.db.equipment:
-            self.bot.db.equipment.insert((ctx.author.id, 0, 0, 0, 0))
-        if arg is None:
+"""        if arg is None:
             # 装備を表示
             return await self._equiplist(ctx)
         args = arg.split()
@@ -68,11 +74,10 @@ class Equip(commands.Cog):
         if args[0] in ["view", "list"]:
             # 装備を表示
             await self._equiplist(ctx)
-        if args[0] in ["del", "remove", "rm", "lift", "delete", "takeoff", "unset",
-                       "unequip"]:
+        if args[0] in :
             # 装備を解除
             await self._equiprm(ctx, args)
-
+"""
 
 async def setup(bot: Bot):
     await bot.add_cog(Equip(bot))

@@ -1,5 +1,11 @@
+# Disworld utils - error
+
 from discord.ext import commands
 import discord
+
+
+class SpecialError(Exception):
+    "エラー表示されないスペシャルなエラー。"
 
 
 def ErrorEmbed(title:str, description:str, color=0xff0000) -> discord.Embed:

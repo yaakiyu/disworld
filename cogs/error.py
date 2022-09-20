@@ -7,7 +7,7 @@ from traceback import TracebackException
 from inspect import cleandoc
 
 from core import Bot
-from utils import ErrorEmbed
+from utils import ErrorEmbed, SpecialError
 
 
 buckets = {
@@ -120,6 +120,8 @@ class ErrorQuery(commands.Cog):
         if isinstance(error, commands.NSFWChannelRequired):
             embed.description = "このコマンドはNSFWチャンネル専用です。"
         if isinstance(error, commands.CommandInvokeError):
+            if isinstance(error.original, SpecialError):
+                return
             embed.description = (
                 f"なんらかのエラーが発生しました。\n`{error.original}`\n"
                 "このエラーは開発者側の問題である可能性が高いです。サポートサーバーにて報告いただけると嬉しいです。"
