@@ -10,7 +10,7 @@ import discord
 def EasyOption(**options) -> list[discord.SelectOption]:
     "discord.SelectOptionのリストを辞書から生成します。"
     return [
-        discord.SelectOption(label=k, description=v)
+        discord.SelectOption(label=k, value=v)
         for k, v in options.items()
     ]
 
