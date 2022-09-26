@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TypeVar
 
-from inspect import iscoroutinefunction
+from inspect import iscoroutinefunction, cleandoc
+from traceback import TracebackException
 import os
 
 from discord.ext import commands
@@ -20,12 +21,32 @@ import utils
 from .data_cache import DataController
 
 
+class MyTree(discord.app_commands.CommandTree):
+    async def on_error(
+        self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError
+    ):
+        channel = interaction.client.get_channel(794842052184506398)
+        assert isinstance(channel, discord.TextChannel)
+        error_message = "".join(
+            TracebackException.from_exception(error).format()
+        )
+
+        print("\033[31m" + error_message + "\033[0m")
+        await channel.send(
+            cleandoc(f"""発生サーバー：{getattr(interaction.guild, 'name')}(ID:{getattr(interaction.guild, 'id')})
+                発生チャンネル：{getattr(interaction.channel, "name")}(ID:{getattr(interaction.channel, 'id')})
+                発生ユーザー：{interaction.user}(ID:{interaction.user.id})
+                発生コマンド：{getattr(interaction.command, "name")}"""),
+            embed=utils.ErrorEmbed("エラー", f"```py\n{error_message}\n```")
+        )
+        await interaction.response.send_message("エラーが発生しました。")
+
 class Bot(commands.Bot):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("intents", discord.Intents.all())
         self.mode: int = kwargs.pop("mode", 0)
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, tree_cls=MyTree, **kwargs)
         self.db = DataController(self)
         self._session: ClientSession | None = None
 
