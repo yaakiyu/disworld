@@ -12,6 +12,7 @@ class StoryView(discord.ui.View):
 
     def __init__(self, bot: Bot, options):
         self.bot = bot
+        super().__init__()
         self.add_item(StorySelect(bot, utils.EasyOption(
             **options
         )))
