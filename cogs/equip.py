@@ -19,7 +19,7 @@ class Equip(commands.Cog):
 
         if ctx.author.id not in self.bot.db.equipment:
             self.bot.db.equipment.insert((ctx.author.id, 0, 0, 0, 0))
-        
+
         if not ctx.invoked_subcommand:
             await ctx.send("使い方が違います。")
 
@@ -53,7 +53,7 @@ class Equip(commands.Cog):
             embed.add_field(name=namelist[n-1], value=val)
 
     @equip.command("set", description="装備をします。", aliases=["equip"])
-    async def _equip_set(self, ctx, args: list[str]):
+    async def _equip_set(self, ctx, arg: str):
         # 装備するものを選択する関数
         u_equip = self.bot.db.equipment[ctx.author.id]
         u_item = loads(self.bot.db.item[ctx.author.id]["Data"])

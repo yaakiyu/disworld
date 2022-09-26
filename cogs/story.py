@@ -12,25 +12,26 @@ class StoryView(discord.ui.View):
 
     def __init__(self, bot: Bot, options):
         self.bot = bot
-        self.story_select.options = utils.EasyOption(
+        self.add_item(StorySelect(bot, utils.EasyOption(
             **options
-        )
+        )))
 
-    @discord.ui.select(
-        placeholder="選択してください...",
-        options=[]
-    )
-    async def story_select(
-        self, inter: discord.Interaction, select: discord.ui.Select
+class StorySelect(discord.ui.Select):
+    def __init__(self, bot: Bot, options):
+        self.bot = bot
+        super().__init__(placeholder="ストーリー選択...", options=options)
+
+    async def callback(
+        self, inter: discord.Interaction
     ):
-        label = int(select.values[0])
+        label = int(self.values[0])
         userdata = self.bot.db.user[inter.user.id]["Story"]
         storydata = self.bot.storydata["1"][str(label)]["ja"]
 
         if (label, userdata) in ((1, 0), (2, 2), (3, 4), (4, 7)):
             self.bot.db.user[inter.user.id]["Story"] += 1
         e = discord.Embed(title=f"Ep.{label}", description=storydata)
-        await inter.edit_original_response(embed=e, view=None)
+        await inter.response.edit_message(embed=e, view=None)
 
 
 class Story(commands.Cog):
