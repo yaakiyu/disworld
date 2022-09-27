@@ -11,6 +11,7 @@ class TalkView(discord.ui.View):
 
     def __init__(self, bot: Bot, options, ctx: commands.Context):
         self.bot = bot
+        super().__init__()
         self.story_select.options = utils.EasyOption(
             **options
         )
