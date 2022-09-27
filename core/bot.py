@@ -117,7 +117,7 @@ class Bot(commands.Bot):
                 "エラー",
                 "まだこのコマンドは研究段階です。もうしばらく待ってください..."
             ))
-            raise utils.SpecialError
+            raise utils.SpecialError()
         if ctx.author.id not in self.db.user:
             await ctx.send(embed=utils.ErrorEmbed(
                 "エラー",

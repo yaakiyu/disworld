@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 
 # mode(0=normal, 1=test, 2=special)
-mode = 0
+mode = 1
 
 # bot object
 bot = core.Bot(**{

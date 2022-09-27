@@ -152,7 +152,7 @@ class DataController:
             # insertする。
             await cursor.execute(
                 f"INSERT INTO {db.table_name} VALUES ("
-                + ("%s, " * len(row.columns)) + ");",
+                + ", ".join("%s" for _ in range(len(row.columns))) + ");",
                 row
             )
         if db[ids.index(row[0])] != row:

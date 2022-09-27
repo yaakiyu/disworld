@@ -41,21 +41,22 @@ class First(commands.Cog):
 
         # create tables
         await self.bot.execute_sql(
-            """CREATE TABLE IF NOT EXISTS Equipment (
+            f"""CREATE TABLE IF NOT EXISTS {"Equipment2" if self.bot.mode else "Equipment"} (
                 Id BIGINT PRIMARY KEY NOT NULL,
                 Weapon INT UNSIGNED, Weapon2 INT UNSIGNED,
                 Armor INT UNSIGNED, Accessory INT UNSIGNED
             );"""
         )
         await self.bot.execute_sql(
-            """CREATE TABLE IF NOT EXISTS User (
+            f"""CREATE TABLE IF NOT EXISTS {"User2" if self.bot.mode else "User"} (
                 Id BIGINT UNSIGNED, Name TEXT, Story SMALLINT UNSIGNED,
                 Level INT UNSIGNED, Exp BIGINT UNSIGNED,
                 Place SMALLINT UNSIGNED, Money INT UNSIGNED
             );"""
         )
         await self.bot.execute_sql(
-            "CREATE TABLE IF NOT EXISTS Item(Id BIGINT UNSIGNED, Data JSON);"
+            f"CREATE TABLE IF NOT EXISTS {"Item2" if self.bot.mode else "Item"}"
+            "(Id BIGINT UNSIGNED, Data JSON);"
         )
 
         await self.bot.db.async_setup()
