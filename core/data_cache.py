@@ -23,12 +23,12 @@ class Columnlized(list):
         elif isinstance(item, int):
             return super().__getitem__(item)
         raise KeyError("そんなデータないで。")
-    
+
     def __setitem__(self, item, item2):
         if isinstance(item, str):
             if item not in self.columns:
                 raise KeyError("不明なカラム。")
-            super().__setitem__(self.columns.index(item), item2)
+            return super().__setitem__(self.columns.index(item), item2)
         elif isinstance(item, int):
             return super().__setitem__(item, item2)
         raise KeyError("そんなデータないで。")
@@ -155,7 +155,7 @@ class DataController:
                 + ", ".join("%s" for _ in range(len(row.columns))) + ");",
                 row
             )
-        if db[ids.index(row[0])] != row:
+        if db.first_data[ids.index(row[0])] != row:
             # updateする。
             await cursor.execute(
                 f"UPDATE {db.table_name} SET "
