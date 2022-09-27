@@ -160,7 +160,7 @@ class DataController:
             await cursor.execute(
                 f"UPDATE {db.table_name} SET "
                 + ", ".join(f"{i} = %s" for i in row.columns)
-                + " WHERE Id = %s,",
+                + " WHERE Id = %s;",
                 row + [row[0],]
             )
         db.first_data = deepcopy(db.data)

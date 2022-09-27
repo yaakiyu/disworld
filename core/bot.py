@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar
+from typing import TypeVar, Final
 
 from inspect import iscoroutinefunction, cleandoc
 from traceback import TracebackException
@@ -52,7 +52,7 @@ class Bot(commands.Bot):
 
     version: str = "0.1.1b"
     version_info: tuple[int, int, int, str] = (0, 1, 1, "beta")
-    version_number: float = 0.1
+    version_number: Final[float] = 0.1
     pool: aiomysql.Pool
     db: DataController
     storydata = data.storydata
@@ -109,8 +109,7 @@ class Bot(commands.Bot):
     ):
         "ユーザーがコマンドを使えるかどうかを判定します。"
         if (
-            version_lock
-            and self.version_number > version_lock
+            self.version_number < version_lock
             and ctx.author.id not in self.owner_ids
         ):
             await ctx.send(embed=utils.ErrorEmbed(

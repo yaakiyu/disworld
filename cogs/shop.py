@@ -14,16 +14,13 @@ class Shop(commands.Cog):
 
     @commands.hybrid_command(name="shop")
     async def c_shop(self, ctx):
-        await self.bot.lock_checker(ctx, 3)
+        await self.bot.lock_checker(ctx, 3, 0.2)
 
         udata = self.bot.db.user[ctx.author.id]["Story"]
         if udata == 3:
             # チュートリアル
-            await self.tutorial(ctx)
+            return await self.tutorial(ctx)
         else:
-            if self.bot.version == "0.2":
-                # バージョンロック
-                return await ctx.send("開店準備中...")
             udata = self.bot.db.user[ctx.author.id]
             uitem = orjson.loads(self.bot.db.item[ctx.author.id][1])
             places = [p for p in self.bot.fielddata if p["visit"] < udata[2]]

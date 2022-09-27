@@ -33,7 +33,7 @@ class TalkView(discord.ui.View):
                 title="老人に話しかけた。",
                 description=utils.data_converter(talk, self.ctx)
             )
-        await inter.edit_original_response(embed=e, view=None)
+        await inter.response.edit_message(embed=e, view=None)
 
 
 class Talk(commands.Cog):
