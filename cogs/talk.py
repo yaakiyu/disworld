@@ -42,7 +42,7 @@ class Talk(commands.Cog):
 
     @commands.hybrid_command(descripotion="近くの人と話します。")
     async def talk(self, ctx):
-        await self.bot.lock_checker(ctx, 6)
+        await self.bot.lock_checker(ctx, 1)
         udata = self.bot.db.user[ctx.author.id]["Story"]
         if udata <= 2:
             opt = {"老人":"1"}
