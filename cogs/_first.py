@@ -55,7 +55,7 @@ class First(commands.Cog):
             );"""
         )
         await self.bot.execute_sql(
-            f"CREATE TABLE IF NOT EXISTS {"Item2" if self.bot.mode else "Item"}"
+            f"CREATE TABLE IF NOT EXISTS {'Item2' if self.bot.mode else 'Item'}"
             "(Id BIGINT UNSIGNED, Data JSON);"
         )
 
