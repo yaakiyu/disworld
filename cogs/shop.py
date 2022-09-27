@@ -104,7 +104,7 @@ class Shop(commands.Cog):
                         "あなたはこの操作をすることができません！", ephemeral=True
                     )
                 if ctx.author.id not in self.bot.db.item:
-                    data = orjson.dumps({"0":1})
+                    data = orjson.dumps({"0":1}).decode()
                     self.bot.db.item.insert((ctx.author.id, data))
                 e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
                 await inter.response.edit_message(embed=e, view=None)
@@ -112,10 +112,10 @@ class Shop(commands.Cog):
 
             menu = utils.EasyMenu("アイテムを選択", "アイテムを選択してください", callback=callback_2, **{"ただの棒":"2"})
             await inter.response.edit_message(view=None)
-            await ctx.send(embed=e, view=utils.EasyView([menu]))
+            await ctx.send(embed=e, view=utils.EasyView(menu))
 
         menu = utils.EasyMenu("お店を選択", "お店を選択してください", callback=callback_1, **{"セーフイ生活店":"1"})
-        await ctx.send(embed=e, view=utils.EasyView([menu]))
+        await ctx.send(embed=e, view=utils.EasyView(menu))
 
 
 async def setup(bot: Bot):

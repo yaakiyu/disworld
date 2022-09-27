@@ -125,6 +125,8 @@ class DataController:
     @tasks.loop(minutes=1)
     async def saveloop(self):
         "データのセーブをします。"
+        if self.bot.mode == 1:
+            print("Data saving...")
         async with self.bot.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 for db in (self.user, self.item, self.equipment):
@@ -155,7 +157,7 @@ class DataController:
                 + ", ".join("%s" for _ in range(len(row.columns))) + ");",
                 row
             )
-        if db.first_data[ids.index(row[0])] != row:
+        elif db.first_data[ids.index(row[0])] != row:
             # updateする。
             await cursor.execute(
                 f"UPDATE {db.table_name} SET "

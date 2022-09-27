@@ -6,8 +6,10 @@ import core
 from dotenv import load_dotenv
 
 
+load_dotenv()
+
 # mode(0=normal, 1=test, 2=special)
-mode = 0
+mode = int(os.environ.get("MODE", 0))
 
 # bot object
 bot = core.Bot(**{
@@ -16,8 +18,6 @@ bot = core.Bot(**{
     "activity": discord.Game("help: g.help"),
     "mode": mode
 })
-
-load_dotenv()
 
 # run
 bot.print(f"running mode {mode}...", mode="main")
