@@ -2,10 +2,10 @@
 
 from discord.ext import commands
 import discord
-import utils
 import orjson
 
 from core import Bot
+import utils
 
 
 class Shop(commands.Cog):
@@ -82,22 +82,40 @@ class Shop(commands.Cog):
                 components=[]
             )
 
-    async def tutorial(self, ctx):
-        e = discord.Embed(title="ショップ - チュートリアル", description="お店へようこそ！案内人のマスダです！\nこの街には1個のお店が存在するようですね...\nセーフィ生活店というところに行ってみましょう！")
-        menu = utils.EasyMenu("お店を選択", "お店を選択してください", **{"セーフイ生活店":"1"})
-        msg = await ctx.send(embed=e, components=[menu])
-        await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
-        e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="この店に来るのが初めてなので、まずはただの棒を買ってみましょう！今回だけ特別にタダで渡します！")
-        menu = utils.EasyMenu("アイテムを選択", "アイテムを選択してください", **{"ただの棒":"2"})
-        await msg.edit(components=[])
-        msg = await ctx.send(embed=e, components=[menu])
-        await msg.wait_for_dropdown(lambda i:i.author == ctx.author)
-        if ctx.author.id not in self.bot.db.item:
-            data = orjson.dumps({"0":1})
-            self.bot.db.item.insert((ctx.author.id, data))
-        e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
-        await msg.edit(embed=e, components=[])
-        self.bot.db.user[ctx.author.id]["Story"] = 4
+    async def tutorial(self, ctx: commands.Context):
+        e = discord.Embed(
+            title="ショップ - チュートリアル",
+            description="お店へようこそ！案内人のマスダです！\nこの街には1個のお店が存在するようですね...\nセーフィ生活店というところに行ってみましょう！"
+        )
+
+        async def callback_1(inter: discord.Interaction):
+            if inter.user != ctx.author:
+                return await inter.response.send_message(
+                    "あなたはこの操作をすることができません！", ephemeral=True
+                )
+            e = discord.Embed(
+                title="セーフイ生活店 - チュートリアル",
+                description="この店に来るのが初めてなので、まずはただの棒を買ってみましょう！今回だけ特別にタダで渡します！"
+            )
+
+            async def callback_2(inter: discord.Interaction):
+                if inter.user != ctx.author:
+                    return await inter.response.send_message(
+                        "あなたはこの操作をすることができません！", ephemeral=True
+                    )
+                if ctx.author.id not in self.bot.db.item:
+                    data = orjson.dumps({"0":1})
+                    self.bot.db.item.insert((ctx.author.id, data))
+                e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
+                await inter.response.edit_message(embed=e, view=None)
+                self.bot.db.user[ctx.author.id]["Story"] = 4
+
+            menu = utils.EasyMenu("アイテムを選択", "アイテムを選択してください", callback=callback_2, **{"ただの棒":"2"})
+            await inter.response.edit_message(view=None)
+            await ctx.send(embed=e, view=utils.EasyView([menu]))
+
+        menu = utils.EasyMenu("お店を選択", "お店を選択してください", callback=callback_1, **{"セーフイ生活店":"1"})
+        await ctx.send(embed=e, view=utils.EasyView([menu]))
 
 
 async def setup(bot: Bot):

@@ -48,7 +48,7 @@ class Talk(commands.Cog):
             opt = {"老人":"1"}
         else:
             opt = {}
-        if opt == {}:
+        if not opt:
             return await ctx.send(embed=utils.ErrorEmbed("エラー", "現在話せる相手がいません！"))
         e = discord.Embed(title="talk - 選択", description="誰と話すか決めてください。")
         await ctx.send(embed=e, view=TalkView(self.bot, opt, ctx))
