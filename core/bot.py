@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TypeVar, Final
 
-from inspect import iscoroutinefunction, cleandoc
-from traceback import TracebackException
+from inspect import iscoroutinefunction
 import os
 
 from discord.ext import commands
@@ -15,6 +14,7 @@ import discord
 from aiohttp import ClientSession
 import aiomysql
 
+from cogs.error import ErrorQuery
 import data
 import utils
 
@@ -22,23 +22,26 @@ from .data_cache import DataController
 
 
 class MyTree(discord.app_commands.CommandTree):
-    async def on_error(
-        self, interaction: discord.Interaction, error: discord.app_commands.AppCommandError
-    ):
-        channel = interaction.client.get_channel(794842052184506398)
-        assert isinstance(channel, discord.TextChannel)
-        error_message = "".join(
-            TracebackException.from_exception(error).format()
-        )
 
-        print("\033[31m" + error_message + "\033[0m")
-        await channel.send(
-            cleandoc(f"""発生サーバー：{getattr(interaction.guild, 'name')}(ID:{getattr(interaction.guild, 'id')})
-                発生チャンネル：{getattr(interaction.channel, "name")}(ID:{getattr(interaction.channel, 'id')})
-                発生ユーザー：{interaction.user}(ID:{interaction.user.id})
-                発生コマンド：{getattr(interaction.command, "name")}"""),
-            embed=utils.ErrorEmbed("エラー", f"```py\n{error_message}\n```")
-        )
+    async def on_error(
+        self, interaction: discord.Interaction,
+        error: discord.app_commands.AppCommandError
+    ):
+        if (isinstance(interaction.client, commands.Bot)
+            and interaction.client.cogs
+            and interaction.client.cogs.get("ErrorQuery")
+            and isinstance(
+                interaction.client.cogs["ErrorQuery"], ErrorQuery
+        )):
+            embed = await interaction.client.cogs["ErrorQuery"].error_distinction(
+                interaction, error
+            )
+            if embed:
+                return await interaction.response.send_message(
+                    embed=embed
+                )
+            else:
+                return await interaction.response.pong()
         await interaction.response.send_message("エラーが発生しました。")
 
 class Bot(commands.Bot):

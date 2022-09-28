@@ -12,15 +12,10 @@ class Item(commands.Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
 
-    async def _item(self, ctx):
-        if self.bot.version == "0.2" and ctx.author.id not in self.bot.owner_ids:
-            # バージョンロック
-            return await ctx.send("現在絶賛開発中...")
-        if ctx.author.id not in self.bot.db.user:
-            return await ctx.send("あなたはゲームを始めていません！storyコマンドでゲームを開始してください！")
-        userdata = self.bot.db.user[ctx.author.id]
-        if userdata["Story"] < 5:
-            return await utils.RequireFault(ctx)
+    @commands.hybrid_command(description="自分の持っているアイテムの確認をします。")
+    async def item(self, ctx: commands.Context):
+        await self.bot.lock_checker(ctx, 5, 0.2)
+
         udata = loads(self.bot.db.item[ctx.author.id]["Data"])
         embedpages = []
         em = discord.Embed(title="アイテム一覧", description="page:1")
@@ -60,10 +55,6 @@ class Item(commands.Cog):
         async def on_timeout():
             await msg.edit(components=[])
     """
-
-    @commands.hybrid_command(description="自分の持っているアイテムの確認をします。")
-    async def item(self, ctx):
-        await self._item(ctx)
 
 
 async def setup(bot: Bot):

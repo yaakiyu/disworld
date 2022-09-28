@@ -27,6 +27,14 @@ class ErrorQuery(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        embed = await self.error_distinction(ctx, error)
+        if embed:
+            await ctx.reply(embed=embed)
+
+    async def error_distinction(
+        self, ctx: commands.Context | discord.Interaction,
+        error: commands.CommandError | discord.app_commands.AppCommandError
+    ):
         embed = ErrorEmbed("エラー", "")
 
         # 振り分け
@@ -135,11 +143,12 @@ class ErrorQuery(commands.Cog):
 
             print("\033[31m" + error_message + "\033[0m")
 
+            author = getattr(ctx, "author", getattr(ctx, "user"))
             await channel.send(
                 cleandoc(f"""発生サーバー：{getattr(ctx.guild, 'name')}(ID:{getattr(ctx.guild, 'id')})
-                    発生チャンネル：{getattr(ctx.channel, "name")}(ID:{ctx.channel.id})
-                    発生ユーザー：{ctx.author}(ID:{ctx.author.id})
-                    発生コマンド：{getattr(ctx.command, "name")}(`{ctx.message.content}`)"""),
+                    発生チャンネル：{getattr(ctx.channel, "name")}(ID:{getattr(ctx.channel, "id")})
+                    発生ユーザー：{author}(ID:{getattr(author, "id")})
+                    発生コマンド：{getattr(ctx.command, "name")}(`{getattr(ctx.message, "content")}`)"""),
                 embed=ErrorEmbed("エラー", f"```py\n{error_message}\n```")
             )
 
@@ -147,8 +156,7 @@ class ErrorQuery(commands.Cog):
                 name="エラー詳細",
                 value=f"```py\n{error_message if len(error_message) < 990 else error_message[:990]}\n```"
             )
-
-        await ctx.reply(embed=embed)
+        return embed
 
 
 async def setup(bot: Bot) -> None:
