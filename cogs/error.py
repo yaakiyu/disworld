@@ -1,12 +1,15 @@
 # disworld - error detection
 
+from typing import TYPE_CHECKING
+
 import discord
 from discord.ext import commands
 
 from traceback import TracebackException
 from inspect import cleandoc
 
-from core import Bot
+if TYPE_CHECKING:
+    from core import Bot
 from utils import ErrorEmbed, SpecialError
 
 
