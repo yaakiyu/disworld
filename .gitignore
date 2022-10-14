@@ -5,3 +5,4 @@
 *.cpython
 .env
 venv
+.mypy_cache/

@@ -25,7 +25,7 @@ buckets = {
 
 
 class ErrorQuery(commands.Cog):
-    def __init__(self, bot: Bot) -> None:
+    def __init__(self, bot: "Bot") -> None:
         self.bot = bot
 
     @commands.Cog.listener()
@@ -162,5 +162,5 @@ class ErrorQuery(commands.Cog):
         return embed
 
 
-async def setup(bot: Bot) -> None:
+async def setup(bot: "Bot") -> None:
     await bot.add_cog(ErrorQuery(bot))
