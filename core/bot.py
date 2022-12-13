@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar, Final
+from typing import TypeVar, Final, overload, Literal, Coroutine, Any
 
 from inspect import iscoroutinefunction
 import os
@@ -36,12 +36,16 @@ class MyTree(discord.app_commands.CommandTree):
             embed = await interaction.client.cogs["ErrorQuery"].error_distinction(
                 interaction, error
             )
-            if embed:
-                return await interaction.response.send_message(
-                    embed=embed
-                )
-            else:
-                return await interaction.response.pong()
+            try:
+                if embed:
+                    return await interaction.response.send_message(
+                        embed=embed
+                    )
+                else:
+                    # utils.SpecialError時はNoneが返る
+                    return await interaction.response.pong()
+            except discord.InteractionResponded:
+                return
         await interaction.response.send_message("エラーが発生しました。")
 
 class Bot(commands.Bot):
@@ -53,8 +57,8 @@ class Bot(commands.Bot):
         self.db = DataController(self)
         self._session: ClientSession | None = None
 
-    version: str = "0.1.1b"
-    version_info: tuple[int, int, int, str] = (0, 1, 1, "beta")
+    version: Final[str] = "0.1.1b"
+    version_info: Final[tuple[int, int, int, str]] = (0, 1, 1, "beta")
     version_number: Final[float] = 0.1
     pool: aiomysql.Pool
     db: DataController
@@ -138,16 +142,50 @@ class Bot(commands.Bot):
 
     reT = TypeVar("reT")
 
+    @overload
     async def execute_sql(
-        self, sql: str | Callable[..., reT],
-        _injects: tuple | None = None, _return_type: str = "",
+        self, sql: str, _injects: tuple | None = None,
+        _return_type: Literal[""] = ...
+    ) -> None:
+        ...
+    @overload
+    async def execute_sql(
+        self, sql: str, _injects: tuple | None = None,
+        _return_type: Literal["fetchone"] = ...
+    ) -> tuple[tuple]:
+        ...
+    @overload
+    async def execute_sql(
+        self, sql: str, _injects: tuple | None = None,
+        _return_type: Literal["fetchall"] = ...
+    ) -> tuple[tuple, ...]:
+        ...
+    @overload
+    async def execute_sql(
+        self, sql: str, _injects: tuple | None = None,
+        _return_type: Literal[""] = ""
+    ) -> tuple:
+        ...
+    @overload
+    async def execute_sql(
+        self, sql: Callable[..., Coroutine[Any, Any, reT]],
+        _injects: None = None, _return_type: Literal[""] = "", **kwargs
+    ) -> reT:
+        ...
+
+    async def execute_sql(
+        self, sql: str | Callable[..., Coroutine[Any, Any, reT]],
+        _injects: tuple | None = None,
+        _return_type: Literal["fetchall", "fetchone", ""] = "",
         **kwargs
-    ) -> None | tuple | reT:
-        "SQL文をMySQLにて実行します。"
+    ) -> reT | tuple | None:
+        "SQL文を実行します。"
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 if iscoroutinefunction(sql):
                     return await sql(cursor, **kwargs)
+                elif callable(sql):
+                    raise ValueError("sql parameter must be async function.")
                 await cursor.execute(sql, _injects)
                 if _return_type == "fetchall":
                     return await cursor.fetchall()

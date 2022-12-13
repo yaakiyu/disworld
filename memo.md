@@ -30,3 +30,14 @@ User: Id=BIGINT UNSIGNED, Name=TEXT(~65535桁), Story=SMALLINT UNSIGNED(0~255)
 Item: Id=BIGINT UNSIGNED, Data=JSON  
 Equipment: Id=BIGINT UNSIGNED, Weapon=INT UNSIGNED, Weapon2=INT UNSIGNED,  
          : Armor=INT UNSIGNED, Accessory=INT UNSIGNED
+
+## utilsについて
+utilsにはいくつかの便利な関数が存在する。
+- `EasyMenu` - 簡単にメニューを作れる。
+- `EasyView` - 簡単メニューをもとに簡単にビューを作れる。
+- `EasyButton` -
+- `EasyOption` -
+- `ErrorEmbed` -
+- `SpecialError` -
+- `RequireFault` -
+- `data_converter` -

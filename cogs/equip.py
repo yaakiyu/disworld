@@ -30,7 +30,10 @@ class Equip(commands.Cog):
         u_equip = self.bot.db.equipment[ctx.author.id]
         u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
         e = discord.Embed(title="削除する装備を選んでください", description=" ")
-        menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
+        menu = utils.EasyMenu(
+            name="choice_e_set", description="変更する装備箇所",
+            options={"武器": "1", "武器2": "2", "防具": "3", "アクセサリー": "4"}
+        )
         namelist = ["武器", "武器2", "防具", "アクセサリ"]
         for i, m in enumerate(u_equip):
             if i == 0 or m == 0:
@@ -38,8 +41,7 @@ class Equip(commands.Cog):
             val = self.bot.itemdata[u_item[str(m)]]["name"]
             e.add_field(name=namelist[i-1], value=val)
 
-    @equip.command("list",
-        description="現在の装備を確認します。", aliases=["view"])
+    @equip.command("list", description="現在の装備を確認します。", aliases=["view"])
     async def _equip_list(self, ctx):
         u_equip = self.bot.db.equipment[ctx.author.id]
         u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
@@ -58,7 +60,7 @@ class Equip(commands.Cog):
         u_equip = self.bot.db.equipment[ctx.author.id]
         u_item = loads(self.bot.db.item[ctx.author.id]["Data"])
         e = discord.Embed(title="変更する装備を選んでください", description=" ")
-        menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={["武器", "1"],["武器2", "2"],["防具", "3"],["アクセサリー", "4"]})
+        menu = utils.EasyMenu(name="choice_e_set",description="変更する装備箇所",options={"武器": "1", "武器2": "2", "防具": "3", "アクセサリー": "4"})
         namelist = ["武器", "武器2", "防具", "アクセサリ"]
         for i, m in enumerate(u_equip):
             if i == 0 or m == 0:
