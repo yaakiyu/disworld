@@ -24,13 +24,14 @@ help用データ。コマンドにはそれぞれtypeが存在する。　
 - story_special ストーリー進行によって表示内容が変わるコマンド。shortやdescriptionにストーリー進行度を引数にとる関数を渡す。
 
 ## DBの仕様について
-User: Id=BIGINT UNSIGNED, Name=TEXT(\~65535桁), Story=SMALLINT UNSIGNED(0\~255)  
-    : Level=INT UNSIGNED(0\~4294967295), Exp=BIGINT UNSIGNED,  
+```
+User: Id=BIGINT UNSIGNED, Name=TEXT(~65535桁), Story=SMALLINT UNSIGNED(0~255)  
+    : Level=INT UNSIGNED(0~4294967295), Exp=BIGINT UNSIGNED,  
     : Place=SMALLINT UNSIGNED, Money=INT UNSIGNED  
 Item: Id=BIGINT UNSIGNED, Data=JSON  
 Equipment: Id=BIGINT UNSIGNED, Weapon=INT UNSIGNED, Weapon2=INT UNSIGNED,  
          : Armor=INT UNSIGNED, Accessory=INT UNSIGNED
-
+```
 ## utilsについて
 utilsにはいくつかの便利な関数が存在する。
 - `EasyMenu` - 簡単にメニューを作れる。
