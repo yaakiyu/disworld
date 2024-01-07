@@ -6,6 +6,8 @@ from discord.ext import commands
 from discord import app_commands
 import discord
 
+import orjson
+
 from core import Bot
 
 
@@ -85,6 +87,31 @@ class Develop(commands.Cog):
         )
         await inter.response.send_message(
             str(res), ephemeral=True
+        )
+
+    @app_commands.command(
+        description="(管理者専用)人にものを与えます"
+    )
+    @app_commands.guilds(*dev_guilds)
+    @app_commands.describe(user="与える対象", thing="与えるもの", count="与える個数")
+    async def give(
+        self, inter: discord.Interaction, user: discord.User, thing: str, count: int
+    ):
+        if not inter.user.id in self.bot.owner_ids:
+            return await inter.response.send_message(
+                "あなたはこのコマンドを実行する権限がありません。", ephemeral=True
+            )
+        if thing == "money":
+            self.bot.db.user[user.id]["Money"] += count
+            thing = "お金"
+        elif thing.isdigit():
+            itemdata = orjson.loads(self.bot.db.item[user.id]["Data"])
+            itemdata[thing] = itemdata.get(thing, 0) + count
+            self.bot.db.item[user.id]["Data"] = orjson.dumps(itemdata)
+        else:
+            await inter.response.send_message("与えるものは`money`もしくはアイテムIDで記入してください。")
+        await inter.response.send_message(
+            f"{user} に {thing} を {count} 個与えました。"
         )
 
 

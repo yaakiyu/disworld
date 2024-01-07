@@ -32,15 +32,28 @@ Item: Id=BIGINT UNSIGNED, Data=JSON
 Equipment: Id=BIGINT UNSIGNED, Weapon=INT UNSIGNED, Weapon2=INT UNSIGNED,  
          : Armor=INT UNSIGNED, Accessory=INT UNSIGNED
 ```
+### DBを管理するシステムの使い方について
+Disworld独自のもの。
+```py
+# アクセスしたいとき -> テーブル名の小文字版が属性になっている
+story_num = bot.db.user[user_id]["Story"]  # カラム名で取得可能
+bot.db.item[user_id]
+bot.db.equipment[user_id]
+itemdata = orjson.loads(useritemdata["Data"])  # アイテム所持データだけはorjsonでのloads、dumps必須
+
+# 書き込みしたいとき -> 値を書き換えるだけでok
+itemdata["3"] = 3  # itemdataは{"itemid": count}という辞書になっている。itemidはstrなので注意
+bot.db.item[user_id]["Data"] = orjson.dumps(itemdata)
+bot.db.user[user_id]["Story"] = story_num + 1
+```
+
 ## utilsについて
 utilsにはいくつかの便利な関数が存在する。
 - `EasyMenu` - 簡単にメニューを作れる。
-- `EasyView` - 簡単メニューをもとに簡単にビューを作れる。
+- `EasyView` - 簡単にビューを作れる。
 - `EasyButton` -
 - `EasyOption` -
 - `ErrorEmbed` -
 - `SpecialError` -
 - `RequireFault` -
 - `data_converter` -
-
-## データの保存方法について

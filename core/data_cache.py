@@ -89,9 +89,10 @@ class DataBaseCache:
         # itemがIDっぽかったらID検索をする。
         if item < 1000000:
             return self.data[item]
-        if item not in (ids := [i[0] for i in self.data]):
-            raise KeyError("そんなデータない。")
-        return self.data[ids.index(item)]
+        for i in self.data:
+            if item == i[0]:
+                return i
+        raise KeyError("そんなデータない。")
 
     def __contains__(self, item: int):
         return item in [i[0] for i in self.data]

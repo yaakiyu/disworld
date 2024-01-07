@@ -4,8 +4,9 @@ fielddata = [
     {
         "name":"First Town",
         "visit":0,
-        "shop":[{
+        "shops":[{
             "name":"セーフィ生活店",
+            "description": "いろんなものが売ってます。",
             "items":[0]
         }]
     }

@@ -146,11 +146,11 @@ class ErrorQuery(commands.Cog):
 
             print("\033[31m" + error_message + "\033[0m")
 
-            author = getattr(ctx, "author", getattr(ctx, "user"))
+            author = getattr(ctx, "author", getattr(ctx, "user", None))
             await channel.send(
                 cleandoc(f"""発生サーバー：{getattr(ctx.guild, 'name')}(ID:{getattr(ctx.guild, 'id')})
                     発生チャンネル：{getattr(ctx.channel, "name")}(ID:{getattr(ctx.channel, "id")})
-                    発生ユーザー：{author}(ID:{getattr(author, "id")})
+                    発生ユーザー：{author}(ID:{getattr(author, "id", 0)})
                     発生コマンド：{getattr(ctx.command, "name")}(`{getattr(ctx.message, "content")}`)"""),
                 embed=ErrorEmbed("エラー", f"```py\n{error_message}\n```")
             )

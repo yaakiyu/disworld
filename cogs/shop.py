@@ -24,12 +24,12 @@ class Shop(commands.Cog):
         udata = self.bot.db.user[ctx.author.id]
         uitem = orjson.loads(self.bot.db.item[ctx.author.id]["Data"])
         places = [p for p in self.bot.fielddata if p["visit"] < udata[2]]
-        shops = [x for s in places for x in s["shop"]]
+        shops = [x for s in places for x in s["shops"]]
         shop_names = [i["name"] for i in shops]
         view = utils.EasyView(utils.EasyMenu(
             "お店を選択", 
             "行きたいお店を選択してください。",
-            **{s:"..." for s in shop_names}
+            **{shops[i]["name"]: shops[i]["description"] for i in range(len(shop_names))}
         ))
         msg = await ctx.send(
             embed=discord.Embed(
@@ -48,34 +48,36 @@ class Shop(commands.Cog):
             "interaction", check=inter_check
         )
         select: discord.ui.Select = view.children[0]  # type: ignore
-        selected = shops[shops.index(select.values[0])]
-        selling_items = [self.bot.itemdata[l] for l in selected["items"]]
-        embed = discord.Embed(title=selected["name"], description="買いたいアイテムを選択してください。")
+        selected_shop = shops[shop_names.index(select.values[0])]
+        selling_items = [self.bot.itemdata[l] for l in selected_shop["items"]]
+        embed = discord.Embed(title=selected_shop["name"], description="買いたいアイテムを選択してください。")
         for ite in selling_items:
             if ite["type"] == "weapon":
                 embed.add_field(
                     name=ite["name"],
-                    value=f"種類：武器 攻撃力：{ite['attack']} 価格：{ite['money']}")
+                    value=f"種類：武器 攻撃力：{ite['attack']} 価格：{ite['shop']}")
             elif ite["type"] == "armour":
                 embed.add_field(
                     name=ite["name"],
-                    value=f"種類：防具 防御力：{ite['block']} 価格：{ite['money']}")
+                    value=f"種類：防具 防御力：{ite['block']} 価格：{ite['shop']}")
             elif ite["type"] == "useful":
                 embed.add_field(
                     name=ite["name"],
-                    value=f"種類：便利アイテム 効果：{ite['effect']} 価格：{ite['money']}")
-        menu = {m["name"]:n for n, m in enumerate(selling_items)}
-        view = utils.EasyView(menu)
+                    value=f"種類：便利アイテム 効果：{ite['effect']} 価格：{ite['shop']}")
+        menu = {m["name"]:f"価格: {m['shop']}" for m in selling_items}
+        view = utils.EasyView(utils.EasyMenu("アイテムを選択", "自分が十分なお金を持っている場合のみ買えます。", **menu))
         await inter.response.edit_message(embed=embed, view=view)
 
         inter = await self.bot.wait_for("interaction", check=inter_check)
 
         select: discord.ui.Select = view.children[0]  # type: ignore
-        selected = shops[int(select.values[0])]
-        itemid = self.bot.itemdata.index(selected)
-        if udata[6] < selected["money"]:
+        itemid = selected_shop["items"][list(menu.keys()).index(select.values[0])]
+        selected_item = self.bot.itemdata[itemid]
+        if udata[6] < selected_item["shop"]:
             return await inter.response.edit_message(
-                embed=utils.ErrorEmbed("エラー", "お金が足りません。"),
+                embed=utils.ErrorEmbed(
+                    "エラー", f"お金が足りません。\n必要金額: `{selected_item['shop']}`\n現在所持: `{udata[6]}`"
+                ),
                 view=None
             )
         if not str(itemid) in uitem:
@@ -84,13 +86,13 @@ class Shop(commands.Cog):
             uitem[str(itemid)] += 1
         # itemテーブルへ書き込み
         self.bot.db.item[ctx.author.id]["Data"] = orjson.dumps(uitem)
-        udata[6] -= selected["money"]
+        udata[6] -= selected_item["shop"]
         # moneyを減らしてusersテーブルへ書き込み
         self.bot.db.user[ctx.author.id]["Money"] = udata[6]
         await inter.response.edit_message(
             embed=discord.Embed(
                 title="成功",
-                description=f"{selected['name']}を購入しました。"
+                description=f"{selected_item['name']}を購入しました。"
             ),
             view=None
         )
