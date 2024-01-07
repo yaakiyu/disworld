@@ -25,10 +25,11 @@ class Shop(commands.Cog):
         uitem = orjson.loads(self.bot.db.item[ctx.author.id]["Data"])
         places = [p for p in self.bot.fielddata if p["visit"] < udata[2]]
         shops = [x for s in places for x in s["shop"]]
+        shop_names = [i["name"] for i in shops]
         view = utils.EasyView(utils.EasyMenu(
             "お店を選択", 
             "行きたいお店を選択してください。",
-            **{s["name"]:str(n) for n, s in enumerate(shops)}
+            **{s:"..." for s in shop_names}
         ))
         msg = await ctx.send(
             embed=discord.Embed(
@@ -47,7 +48,7 @@ class Shop(commands.Cog):
             "interaction", check=inter_check
         )
         select: discord.ui.Select = view.children[0]  # type: ignore
-        selected = shops[int(select.values[0])]
+        selected = shops[shops.index(select.values[0])]
         selling_items = [self.bot.itemdata[l] for l in selected["items"]]
         embed = discord.Embed(title=selected["name"], description="買いたいアイテムを選択してください。")
         for ite in selling_items:
