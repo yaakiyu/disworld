@@ -39,6 +39,10 @@ class ErrorQuery(commands.Cog):
         error: commands.CommandError | discord.app_commands.AppCommandError
     ):
         embed = ErrorEmbed("エラー", "")
+        
+        # Hybridエラーの場合はオリジナルのエラーで判定する
+        if isinstance(error, commands.HybridCommandError):
+            error = error.original
 
         # 振り分け
         if isinstance(error, commands.MissingRequiredArgument):
@@ -59,15 +63,15 @@ class ErrorQuery(commands.Cog):
                                  f"\n{', '.join(error.literals)}")
         if isinstance(error, commands.PrivateMessageOnly):
             embed.description = "このコマンドはDM専用です。"
-        if isinstance(error, commands.NoPrivateMessage):
+        if isinstance(error, commands.NoPrivateMessage | discord.app_commands.NoPrivateMessage):
             embed.description = "このコマンドはDMでは使用できません。"
-        if isinstance(error, commands.CommandNotFound):
+        if isinstance(error, commands.CommandNotFound | discord.app_commands.CommandNotFound):
             embed.description = "そのコマンドが見つかりませんでした。"
         if isinstance(error, commands.DisabledCommand):
             embed.description = "このコマンドは現在無効化されています。"
         if isinstance(error, commands.TooManyArguments):
             embed.description = "コマンドに必要ない(もしくは、過剰な)引数が渡されました。"
-        if isinstance(error, commands.CommandOnCooldown):
+        if isinstance(error, commands.CommandOnCooldown | discord.app_commands.CommandOnCooldown):
             embed.description = f"コマンドはクールダウン中です。{error.retry_after:.2f}秒お待ちください。"
         if isinstance(error, commands.MaxConcurrencyReached):
             embed.description = (
@@ -76,7 +80,7 @@ class ErrorQuery(commands.Cog):
             )
         if isinstance(error, commands.NotOwner):
             embed.description = "このコマンドはbotの所有者のみ実行できます。"
-        if isinstance(error, commands.CheckFailure) and not embed:
+        if isinstance(error, commands.CheckFailure | discord.app_commands.CheckFailure) and not embed:
             embed.description = "なんらかの理由によりこのコマンドは使用できません。"
         if isinstance(error, commands.MessageNotFound):
             embed.description = f"指定されたメッセージ: `{error.argument}`が見つかりませんでした。"
@@ -113,24 +117,24 @@ class ErrorQuery(commands.Cog):
                 f"指定された引数: `{error.value}`は、範囲外です。\n"
                 f"{error.minimum}以上{error.maximum}以下でなければいけません。"
             )
-        if isinstance(error, commands.MissingPermissions):
+        if isinstance(error, commands.MissingPermissions | discord.app_commands.MissingPermissions):
             embed.description = "あなたがコマンドを実行するのに必要な権限が足りません。"
             # TODO: 必要な権限を出す
-        if isinstance(error, commands.BotMissingPermissions):
+        if isinstance(error, commands.BotMissingPermissions | discord.app_commands.BotMissingPermissions):
             embed.description = "コマンドの実行に対してBotが必要な権限が足りません。"
             # TODO: 必要な権限を出す
-        if isinstance(error, commands.MissingRole):
+        if isinstance(error, commands.MissingRole | discord.app_commands.MissingRole):
             embed.description = "コマンドの実行に対してあなたが持っていなければならないロールが足りません。"
             # TODO: 必要なロールを出す
         if isinstance(error, commands.BotMissingRole):
             embed.description = "コマンドの実行に対してBotが持っていなければならないロールが足りません。"
-        if isinstance(error, commands.MissingAnyRole):
+        if isinstance(error, commands.MissingAnyRole | discord.app_commands.MissingAnyRole):
             embed.description = "コマンドの実行に対してあなたに必要なロールを一つも持っていません。"
         if isinstance(error, commands.BotMissingAnyRole):
             embed.description = "コマンドの実行に対してBotに必要なロールを一つも持っていません。"
         if isinstance(error, commands.NSFWChannelRequired):
             embed.description = "このコマンドはNSFWチャンネル専用です。"
-        if isinstance(error, commands.CommandInvokeError):
+        if isinstance(error, commands.CommandInvokeError | discord.app_commands.CommandInvokeError):
             if isinstance(error.original, SpecialError):
                 return
             embed.description = (

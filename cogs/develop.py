@@ -11,7 +11,7 @@ import orjson
 from core import Bot
 
 
-dev_guilds = (discord.Object(a) for a in [699120642796028014, 794079140462460979])
+dev_guilds = [discord.Object(a) for a in [699120642796028014, 794079140462460979]]
 
 
 class Develop(commands.Cog):

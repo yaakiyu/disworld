@@ -14,7 +14,7 @@ storydata = {
             "ja":"""(story)
 ```diff
 ミッション
-+ (mission)
++ 「g.attack」で敵に攻撃して、敵を倒そう。
 ```""",
             "en":"""
 """
@@ -23,7 +23,7 @@ storydata = {
             "ja":"""(story)
 ```diff
 ミッション
-+ (mission)
++ 様々な敵と戦って、レベルを10以上にしよう。
 ```""",
             "en":"""
 """

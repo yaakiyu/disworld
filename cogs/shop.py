@@ -121,7 +121,10 @@ class Shop(commands.Cog):
                 if ctx.author.id not in self.bot.db.item:
                     data = orjson.dumps({"0":1}).decode()
                     self.bot.db.item.insert((ctx.author.id, data))
-                e = discord.Embed(title="セーフイ生活店 - チュートリアル", description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n```")
+                e = discord.Embed(
+                    title="セーフイ生活店 - チュートリアル",
+                    description="しっかり商品を購入できましたね！おめでとう！\n```diff\n! ミッションクリア !\n+ 「g.equip」で購入した武器を装備しよう。\n```"
+                )
                 await inter.response.edit_message(embed=e, view=None)
                 self.bot.db.user[ctx.author.id]["Story"] = 4
 

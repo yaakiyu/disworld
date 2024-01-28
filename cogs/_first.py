@@ -58,6 +58,21 @@ class First(commands.Cog):
             f"CREATE TABLE IF NOT EXISTS {'Item2' if self.bot.mode else 'Item'}"
             "(Id BIGINT UNSIGNED, Data JSON);"
         )
+        await self.bot.execute_sql(
+            "CREATE TABLE IF NOT EXISTS Channel"
+            "(Id BIGINT PRIMARY KEY NOT NULL, "
+            "Level BIGINT UNSIGNED DEFAULT 1, InBattle BOOLEAN DEFAULT FALSE);"
+        )
+        await self.bot.execute_sql(
+            "CREATE TABLE IF NOT EXISTS PlayerBattleInfo"
+            "(Id BIGINt UNSIGNED PRIMARY KEY NOT NULL, ChannelId BIGINT UNSIGNED, "
+            "HP BIGINT UNSIGNED);"
+        )
+        await self.bot.execute_sql(
+            "CREATE TABLE IF NOT EXISTS ChannelBattleInfo"
+            "(Id BIGINt UNSIGNED PRIMARY KEY NOT NULL, Enemy INT UNSIGNED, "
+            "Players JSON, HP BIGINT UNSIGNED);"
+        )
 
         await self.bot.db.async_setup()
 
